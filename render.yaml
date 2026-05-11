@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: outreach-agent-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: data-disk
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: '["https://your-frontend-domain.vercel.app"]'
+      - key: DATABASE_URL
+        value: "sqlite+aiosqlite:////data/outreach.db"
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: ADMIN_API_KEY_SECRET
+        generateValue: true

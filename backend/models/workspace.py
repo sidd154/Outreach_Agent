@@ -1,0 +1,72 @@
+import uuid
+import datetime
+from sqlalchemy import String, Text, JSON, DateTime, Date, Boolean, Integer
+from sqlalchemy.orm import Mapped, mapped_column
+from backend.database import Base
+
+def utcnow():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+class Workspace(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    api_key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+
+    # Product identity
+    product_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    product_website: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    product_one_liner: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    product_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_motto: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Product details (extended)
+    product_pricing: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_features: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    product_differentiators: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    product_brochure_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    product_brochure_extracted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_style_sample: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Target audience
+    industry: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decision_maker_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pain_points: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    cta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    local_context: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Email settings
+    tone: Mapped[str] = mapped_column(String(50), default="formal and respectful")
+    email_length: Mapped[str] = mapped_column(String(50), default="medium (120-200 words)")
+    language: Mapped[str] = mapped_column(String(50), default="English")
+    custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # AI
+    openai_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Resend
+    resend_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    resend_from_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resend_from_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Gmail OAuth
+    gmail_access_token_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    gmail_refresh_token_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    gmail_token_expiry: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    gmail_connected: Mapped[bool] = mapped_column(Boolean, default=False)
+    gmail_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    gmail_last_polled_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Warmup
+    domain_active_since: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    emails_sent_today: Mapped[int] = mapped_column(Integer, default=0)
+    warmup_reset_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+
+    # Footer / Contact Info
+    product_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    product_demo_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, onupdate=utcnow, nullable=True)
