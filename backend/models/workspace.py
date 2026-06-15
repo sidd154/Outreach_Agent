@@ -45,6 +45,21 @@ class Workspace(Base):
 
     # AI
     openai_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    openai_model: Mapped[str | None] = mapped_column(String(100), default="gpt-4o-mini")
+
+    # SMTP Settings
+    smtp_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_port: Mapped[int] = mapped_column(Integer, default=587)
+    smtp_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_password_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    smtp_from_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    smtp_from_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # IMAP Settings
+    imap_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    imap_port: Mapped[int] = mapped_column(Integer, default=993)
+    imap_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    imap_password_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Resend
     resend_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)

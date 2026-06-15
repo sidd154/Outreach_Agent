@@ -31,6 +31,9 @@ class GeneratedEmail(Base):
     resend_email_id: Mapped[str | None] = mapped_column(String, nullable=True)
     generation_attempt: Mapped[int] = mapped_column(Integer, default=1)
 
+    opened_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    is_opened: Mapped[bool] = mapped_column(Boolean, default=False)
+
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
 
 class AuditLog(Base):

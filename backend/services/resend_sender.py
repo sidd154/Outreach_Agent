@@ -69,11 +69,84 @@ class ResendEmailSender:
         from_email = self.workspace.resend_from_email or settings.default_from_email
         from_name = self.workspace.resend_from_name or self.workspace.name or settings.default_from_name
 
+        # Check if SMTP is configured (workspace-level first, then global settings fallback)
+        smtp_host = self.workspace.smtp_host or settings.smtp_host
+        smtp_port = int(self.workspace.smtp_port or 587) if self.workspace.smtp_host else int(settings.smtp_port or 587)
+        smtp_username = self.workspace.smtp_username or settings.smtp_username
+        smtp_password = None
+        if self.workspace.smtp_host and self.workspace.smtp_password_encrypted:
+            try:
+                smtp_password = _decrypt(self.workspace.smtp_password_encrypted)
+            except Exception:
+                pass
+        else:
+            smtp_password = settings.smtp_password or None
+
+        smtp_from_email = self.workspace.smtp_from_email or settings.smtp_from_email or smtp_username or from_email
+        smtp_from_name = self.workspace.smtp_from_name or settings.smtp_from_name or from_name
+
+        if smtp_host:
+            import smtplib
+            import uuid
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f"{smtp_from_name} <{smtp_from_email}>" if smtp_from_name else smtp_from_email
+            msg['To'] = to_address
+
+            if from_email:
+                msg['Reply-To'] = from_email
+
+            headers = kwargs.get("headers")
+            if headers:
+                for k, v in headers.items():
+                    msg[k] = v
+
+            part1 = MIMEText(body_text, 'plain')
+            msg.attach(part1)
+
+            email_id = kwargs.get("email_id")
+            html_body = _text_to_html(body_text)
+            if email_id:
+                tracking_url = f"{settings.backend_url}/api/track/open/{email_id}"
+                html_body += f'\n<img src="{tracking_url}" width="1" height="1" style="display:none;" />'
+
+            part2 = MIMEText(html_body, 'html')
+            msg.attach(part2)
+
+            try:
+                loop = asyncio.get_event_loop()
+                def _send():
+                    if smtp_port == 465:
+                        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+                    else:
+                        server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+                        server.starttls()
+                    
+                    if smtp_username and smtp_password:
+                        server.login(smtp_username, smtp_password)
+                    
+                    server.sendmail(smtp_from_email, to_address, msg.as_string())
+                    server.quit()
+
+                await loop.run_in_executor(None, _send)
+                return SendResult(success=True, email_id=f"smtp-{uuid.uuid4().hex}")
+            except Exception as e:
+                logger.error(f"SMTP error sending to {to_address}: {e}")
+                return SendResult(success=False, error=str(e))
+
         if not api_key or not from_email:
+            import uuid
             logger.info(f"[DRY RUN] Would send to {to_address}: {subject}")
             return SendResult(success=True, email_id=f"dry-run-{uuid.uuid4().hex}")
 
+        email_id = kwargs.get("email_id")
         html_body = _text_to_html(body_text)
+        if email_id:
+            tracking_url = f"{settings.backend_url}/api/track/open/{email_id}"
+            html_body += f'\n<img src="{tracking_url}" width="1" height="1" style="display:none;" />'
 
         payload = {
             "from": f"{from_name} <{from_email}>",

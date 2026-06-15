@@ -96,7 +96,8 @@ async def run_copywriter(
 
     try:
         api_key = workspace_data.get("openai_api_key")
-        raw = await _call_openai_with_retry(system, user, max_tokens=800, api_key=api_key)
+        model = workspace_data.get("openai_model")
+        raw = await _call_openai_with_retry(system, user, max_tokens=800, api_key=api_key, model=model)
         parsed = _safe_parse_json(raw)
         if parsed and "subject" in parsed and "body" in parsed:
             return EmailDraft(subject=parsed["subject"], body=parsed["body"])

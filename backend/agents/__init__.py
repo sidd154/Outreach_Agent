@@ -14,12 +14,12 @@ async def _get_openai_client(api_key: str | None = None) -> AsyncOpenAI:
         raise ValueError("No OpenAI API key provided.")
     return AsyncOpenAI(api_key=key)
 
-async def _call_openai(prompt: str, max_tokens: int = 400, api_key: str | None = None) -> str:
+async def _call_openai(prompt: str, max_tokens: int = 400, api_key: str | None = None, model: str | None = None) -> str:
     """Calls OpenAI chat endpoint."""
     client = await _get_openai_client(api_key)
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model=model or settings.openai_model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=0.7
@@ -34,14 +34,15 @@ async def _call_openai_with_retry(
     user: str,
     max_tokens: int,
     max_retries: int = 2,
-    api_key: str | None = None
+    api_key: str | None = None,
+    model: str | None = None
 ) -> str:
     """Calls OpenAI chat endpoint with retries and system prompt support."""
     client = await _get_openai_client(api_key)
     for attempt in range(max_retries):
         try:
             response = await client.chat.completions.create(
-                model="gpt-4o",
+                model=model or settings.openai_model,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": user}

@@ -33,6 +33,8 @@ class GeneratedEmailResponse(GeneratedEmailBase):
     generation_attempt: int
     created_at: datetime
     lead: Optional[LeadResponse] = None
+    opened_at: Optional[datetime] = None
+    is_opened: bool = False
 
     class Config:
         from_attributes = True

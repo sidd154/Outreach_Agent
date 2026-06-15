@@ -39,7 +39,8 @@ async def enqueue_generation_job(
         research = await run_researcher(
             website=lead.website,
             org_name=lead.org_name,
-            api_key=api_key
+            api_key=api_key,
+            model=workspace.openai_model
         )
         lead.hook = research.hook
         lead.motto_found = research.motto
@@ -74,7 +75,8 @@ async def enqueue_generation_job(
             "local_context": workspace.local_context,
             "cta": workspace.cta,
             "custom_instructions": workspace.custom_instructions,
-            "openai_api_key": api_key
+            "openai_api_key": api_key,
+            "openai_model": workspace.openai_model
         }
 
         variation_group_id = uuid4() if num_variations > 1 else None

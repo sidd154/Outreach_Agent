@@ -24,6 +24,17 @@ async def poll_all_workspaces_for_replies():
             except Exception as e:
                 logger.error(f"Error polling workspace {workspace.id}: {e}")
 
+        # Poll replies via IMAP if configured
+        from backend.config import settings
+        if settings.imap_host:
+            try:
+                from backend.services.imap_reader import poll_replies_via_imap
+                count = await poll_replies_via_imap(db)
+                if count > 0:
+                    logger.info(f"Polled {count} new replies via IMAP")
+            except Exception as e:
+                logger.error(f"Error polling replies via IMAP: {e}")
+
 async def reset_warmup_counters():
     logger.info("Resetting daily warmup counters...")
     async with AsyncSessionLocal() as db:

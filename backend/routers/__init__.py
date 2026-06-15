@@ -10,6 +10,8 @@ from .blacklist import router as blacklist_router
 from .templates import router as templates_router
 
 from .webhooks import router as webhooks_router
+from .followup import router as followup_router
+from .dashboard import router as dashboard_router
 
 api_router = APIRouter()
 api_router.include_router(workspace_router, prefix="/workspace", tags=["workspace"])
@@ -21,3 +23,5 @@ api_router.include_router(replies_router, prefix="/replies", tags=["replies"])
 api_router.include_router(blacklist_router, prefix="/blacklist", tags=["blacklist"])
 api_router.include_router(templates_router, prefix="/templates", tags=["templates"])
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(followup_router, prefix="/followup", tags=["followup"])
+api_router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])

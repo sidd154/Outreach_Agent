@@ -5,7 +5,8 @@ import uuid
 import logging
 from backend.config import settings
 from backend.models.workspace import Workspace
-from backend.agents import _call_ollama, _safe_parse_json
+from backend.agents import _call_openai, _safe_parse_json
+from backend.services.resend_sender import _decrypt
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ Brochure text:
 """
 
     try:
-        raw = await _call_ollama(prompt, max_tokens=800)
+        api_key = _decrypt(workspace.openai_api_key_encrypted) if workspace.openai_api_key_encrypted else None
+        raw = await _call_openai(prompt, max_tokens=800, api_key=api_key, model=workspace.openai_model)
         parsed = _safe_parse_json(raw)
         return parsed or {}
     except Exception as e:

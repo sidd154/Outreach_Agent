@@ -182,7 +182,11 @@ export default function GenerationQueuePage() {
                 >
                   <div className="font-medium truncate flex items-center justify-between">
                     <span>{item.lead?.contact_name || item.lead?.email}</span>
-                    <Badge variant="secondary" className="text-xs">Sent</Badge>
+                    {item.is_opened ? (
+                      <Badge className="bg-green-500 text-white text-xs hover:bg-green-600">Read</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Sent</Badge>
+                    )}
                   </div>
                   <div className="text-sm text-muted-foreground truncate mt-1">{item.subject}</div>
                 </div>
@@ -204,6 +208,24 @@ export default function GenerationQueuePage() {
                 <div>
                   <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">To</div>
                   <div className="font-medium">{selected.lead?.email}</div>
+                  {selected.sent_at && (
+                    <div className="flex gap-4 p-3 rounded-lg bg-muted/50 text-xs mt-2 border">
+                      <div>
+                        <span className="font-semibold text-muted-foreground block uppercase">Sent At</span>
+                        <span className="font-medium">{new Date(selected.sent_at).toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-muted-foreground block uppercase">Read Status</span>
+                        {selected.is_opened ? (
+                          <span className="font-semibold text-green-600">
+                            Opened ({new Date(selected.opened_at).toLocaleString()})
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Unread</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Subject</div>

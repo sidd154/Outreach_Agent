@@ -30,11 +30,26 @@ class WorkspaceUpdate(BaseModel):
     language: Optional[str] = None
     custom_instructions: Optional[str] = None
     openai_api_key: Optional[str] = None # Intercepted and encrypted
+    openai_model: Optional[str] = None
     resend_api_key: Optional[str] = None # Intercepted and encrypted in router
     resend_from_email: Optional[str] = None
     resend_from_name: Optional[str] = None
     product_phone: Optional[str] = None
     product_demo_link: Optional[str] = None
+    
+    # SMTP
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: Optional[str] = None
+    smtp_from_name: Optional[str] = None
+
+    # IMAP
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = None
+    imap_username: Optional[str] = None
+    imap_password: Optional[str] = None
 
 class WorkspaceResponse(WorkspaceBase):
     id: uuid.UUID
@@ -74,6 +89,19 @@ class WorkspaceResponse(WorkspaceBase):
     resend_credentials_set: bool = False
     global_resend_active: bool = False
     openai_configured: bool = False
+    openai_model: Optional[str] = None
+    
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_username: Optional[str] = None
+    smtp_from_email: Optional[str] = None
+    smtp_from_name: Optional[str] = None
+    smtp_configured: bool = False
+
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = None
+    imap_username: Optional[str] = None
+    imap_configured: bool = False
 
     class Config:
         from_attributes = True

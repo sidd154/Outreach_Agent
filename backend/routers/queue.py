@@ -146,7 +146,7 @@ async def send_all(
             skipped_blacklisted += 1
             continue
             
-        res = await sender.send_email(lead.email, email.subject, email.body)
+        res = await sender.send_email(lead.email, email.subject, email.body, email_id=email.id)
         if res.success:
             email.sent_at = datetime.now()
             email.resend_email_id = res.email_id
@@ -204,7 +204,7 @@ async def send_single(
         raise HTTPException(400, "Lead is blacklisted")
         
     sender = ResendEmailSender(workspace)
-    res = await sender.send_email(lead.email, email.subject, email.body)
+    res = await sender.send_email(lead.email, email.subject, email.body, email_id=email.id)
     
     if res.success:
         email.approved = True
@@ -296,7 +296,7 @@ async def approve_and_send_all(
                 lead.status = "approved"
                 
                 # Send
-                res = await sender.send_email(lead.email, email.subject, email.body)
+                res = await sender.send_email(lead.email, email.subject, email.body, email_id=email.id)
                 if res.success:
                     email.sent_at = datetime.now()
                     email.resend_email_id = res.email_id

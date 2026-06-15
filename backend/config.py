@@ -10,6 +10,21 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:latest"
     openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    
+    # SMTP Settings
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = ""
+
+    # IMAP Settings
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_username: str = ""
+    imap_password: str = ""
     auth_backend: str = "apikey"
     billing_enabled: bool = False
     queue_backend: str = "direct"

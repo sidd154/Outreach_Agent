@@ -5,13 +5,43 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { 
+  Eye, 
+  EyeOff, 
+  CheckCircle, 
+  XCircle, 
+  Loader2, 
+  Server, 
+  Mail, 
+  Database, 
+  Sparkles,
+  RefreshCw,
+  PlusCircle
+} from "lucide-react";
 
 export default function ProductSettingsPage() {
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Connection Test States
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const [testingImap, setTestingImap] = useState(false);
+  
+  // Password Visibility States
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [showImapPass, setShowImapPass] = useState(false);
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+
+  // Field Inputs (uncontrolled defaultValues, but local state for passwords/keys to send in testing/updating)
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [imapPassword, setImapPassword] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+
+  // Saving states per field for auto-save feedback
+  const [savingFields, setSavingFields] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function load() {
@@ -20,13 +50,11 @@ export default function ProductSettingsPage() {
         if (!key) {
           const res = await api.workspace.init("Default Workspace");
           localStorage.setItem("workspaceApiKey", res.api_key);
-          key = res.api_key;
         }
         const ws = await api.workspace.get();
         setWorkspace(ws);
       } catch (e: any) {
         if (e.status === 401) {
-          // Stale key, try to re-init
           try {
             const res = await api.workspace.init("Default Workspace");
             localStorage.setItem("workspaceApiKey", res.api_key);
@@ -34,10 +62,10 @@ export default function ProductSettingsPage() {
             setWorkspace(ws);
             toast.success("Session restored");
           } catch {
-            toast.error("Critical authentication error. Please clear your site data.");
+            toast.error("Critical authentication error. Please refresh the page.");
           }
         } else {
-          toast.error("Failed to load workspace");
+          toast.error("Failed to load workspace configuration");
         }
       } finally {
         setLoading(false);
@@ -46,260 +74,550 @@ export default function ProductSettingsPage() {
     load();
   }, []);
 
-  const handleUpdate = async (field: string, value: string) => {
+  const handleUpdateField = async (field: string, value: any) => {
+    setSavingFields(prev => ({ ...prev, [field]: "saving" }));
     try {
       const updated = await api.workspace.update({ [field]: value });
       setWorkspace(updated);
-      toast.success("Saved");
+      setSavingFields(prev => ({ ...prev, [field]: "saved" }));
+      setTimeout(() => {
+        setSavingFields(prev => {
+          const copy = { ...prev };
+          delete copy[field];
+          return copy;
+        });
+      }, 2000);
     } catch {
-      toast.error("Update failed");
+      setSavingFields(prev => ({ ...prev, [field]: "error" }));
+      toast.error(`Failed to save ${field.replace('_', ' ')}`);
     }
   };
 
-  const [resendKeyInput, setResendKeyInput] = useState("");
-  const [openaiKeyInput, setOpenaiKeyInput] = useState("");
-
-  const verifyResend = async () => {
-    if (!resendKeyInput) return;
+  const handleUpdatePassword = async (type: "smtp" | "imap") => {
+    const pwdValue = type === "smtp" ? smtpPassword : imapPassword;
+    if (!pwdValue) return;
+    
+    const fieldName = type === "smtp" ? "smtp_password" : "imap_password";
+    setSavingFields(prev => ({ ...prev, [fieldName]: "saving" }));
+    
     try {
-      const res = await api.workspace.verifyResend(resendKeyInput);
-      if (res.valid) {
-        toast.success("Resend configured successfully!");
-        setWorkspace((w: any) => ({ ...w, resend_configured: true }));
-        setResendKeyInput("");
+      const updated = await api.workspace.update({ [fieldName]: pwdValue });
+      setWorkspace(updated);
+      if (type === "smtp") setSmtpPassword("");
+      else setImapPassword("");
+      setSavingFields(prev => ({ ...prev, [fieldName]: "saved" }));
+      toast.success(`${type.toUpperCase()} password updated successfully`);
+      setTimeout(() => {
+        setSavingFields(prev => {
+          const copy = { ...prev };
+          delete copy[fieldName];
+          return copy;
+        });
+      }, 2000);
+    } catch {
+      setSavingFields(prev => ({ ...prev, [fieldName]: "error" }));
+      toast.error(`Failed to save ${type.toUpperCase()} password`);
+    }
+  };
+
+  const handleUpdateOpenAI = async () => {
+    if (!openaiKey) return;
+    setSavingFields(prev => ({ ...prev, "openai_api_key": "saving" }));
+    try {
+      const updated = await api.workspace.update({ openai_api_key: openaiKey });
+      setWorkspace(updated);
+      setOpenaiKey("");
+      setSavingFields(prev => ({ ...prev, "openai_api_key": "saved" }));
+      toast.success("OpenAI Key saved successfully");
+      setTimeout(() => {
+        setSavingFields(prev => {
+          const copy = { ...prev };
+          delete copy["openai_api_key"];
+          return copy;
+        });
+      }, 2000);
+    } catch {
+      setSavingFields(prev => ({ ...prev, "openai_api_key": "error" }));
+      toast.error("Failed to save OpenAI API Key");
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
+    const payload = {
+      smtp_host: (document.getElementById("smtp_host") as HTMLInputElement)?.value || workspace?.smtp_host,
+      smtp_port: parseInt((document.getElementById("smtp_port") as HTMLInputElement)?.value || "587"),
+      smtp_username: (document.getElementById("smtp_username") as HTMLInputElement)?.value || workspace?.smtp_username,
+      smtp_password: smtpPassword || undefined
+    };
+    try {
+      const res = await api.workspace.testSmtp(payload);
+      if (res.status === "success") {
+        toast.success(res.message);
       } else {
-        toast.error("Invalid API key or network error");
+        toast.error(`SMTP Test Failed: ${res.message}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to execute SMTP connection test");
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
+  const handleTestImap = async () => {
+    setTestingImap(true);
+    const payload = {
+      imap_host: (document.getElementById("imap_host") as HTMLInputElement)?.value || workspace?.imap_host,
+      imap_port: parseInt((document.getElementById("imap_port") as HTMLInputElement)?.value || "993"),
+      imap_username: (document.getElementById("imap_username") as HTMLInputElement)?.value || workspace?.imap_username,
+      imap_password: imapPassword || undefined
+    };
+    try {
+      const res = await api.workspace.testImap(payload);
+      if (res.status === "success") {
+        toast.success(res.message);
+      } else {
+        toast.error(`IMAP Test Failed: ${res.message}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to execute IMAP connection test");
+    } finally {
+      setTestingImap(false);
+    }
+  };
+
+  const handleSeedDemoLeads = async () => {
+    try {
+      const res = await api.workspace.seedDemoLeads();
+      if (res.added > 0) {
+        toast.success(`Successfully added ${res.added} demo leads!`);
+      } else {
+        toast.info("Demo leads are already loaded in the workspace.");
       }
     } catch {
-      toast.error("Error verifying key with API");
+      toast.error("Failed to seed demo leads");
     }
   };
 
-  const updateOpenAI = async () => {
-    if (!openaiKeyInput) return;
-    try {
-      await api.workspace.update({ openai_api_key: openaiKeyInput });
-      toast.success("OpenAI Key saved successfully!");
-      setWorkspace((w: any) => ({ ...w, openai_configured: true }));
-      setOpenaiKeyInput("");
-    } catch {
-      toast.error("Failed to save OpenAI key");
-    }
+  const renderSaveIndicator = (field: string) => {
+    const state = savingFields[field];
+    if (!state) return null;
+    if (state === "saving") return <span className="text-[10px] text-blue-500 animate-pulse ml-2">Saving...</span>;
+    if (state === "saved") return <span className="text-[10px] text-green-500 ml-2">Saved ✓</span>;
+    if (state === "error") return <span className="text-[10px] text-red-500 ml-2">Error ✗</span>;
+    return null;
   };
 
-  const connectGmail = async () => {
-    try {
-      const res = await api.workspace.gmailConnectUrl();
-      window.location.href = res.oauth_url;
-    } catch {
-      toast.error("Failed to start Gmail auth");
-    }
-  };
-
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="p-8 space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold">Workspace Configuration <span className="text-sm font-normal text-muted-foreground ml-2">v1.1 - Cleaned</span></h1>
-
-      <div className="grid grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Integrations</CardTitle>
-              {(workspace?.resend_configured || workspace?.global_resend_active) && (
-                <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Connect Active
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 mt-2">
-              <Label className="flex justify-between">
-                <span>Resend API Key</span>
-                {workspace?.resend_configured && (
-                  <span className="text-xs text-muted-foreground">re_•••••••• (Private)</span>
-                )}
-                {!workspace?.resend_configured && workspace?.global_resend_active && (
-                  <span className="text-xs text-blue-600">Using Global Default</span>
-                )}
-              </Label>
-              <div className="flex gap-2">
-                <Input 
-                  type="password"
-                  placeholder={workspace?.resend_configured ? "••••••••••••••••" : "re_..."}
-                  value={resendKeyInput}
-                  onChange={(e) => setResendKeyInput(e.target.value)}
-                />
-                <Button variant={workspace?.resend_configured ? "outline" : "default"} onClick={verifyResend}>
-                  {workspace?.resend_configured ? "Update" : "Connect"}
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                Get your key from <a href="https://resend.com/api-keys" target="_blank" className="underline">resend.com</a>
-              </p>
-            </div>
-            
-            <div className="space-y-2 mt-4 pt-4 border-t border-dashed">
-              <Label className="flex justify-between">
-                <span>OpenAI API Key (GPT-4o)</span>
-                {workspace?.openai_configured && (
-                  <span className="text-xs text-muted-foreground">sk-•••••••• (Private)</span>
-                )}
-              </Label>
-              <div className="flex gap-2">
-                <Input 
-                  type="password"
-                  placeholder={workspace?.openai_configured ? "••••••••••••••••" : "sk-..."}
-                  value={openaiKeyInput}
-                  onChange={(e) => setOpenaiKeyInput(e.target.value)}
-                />
-                <Button variant={workspace?.openai_configured ? "outline" : "default"} onClick={updateOpenAI}>
-                  {workspace?.openai_configured ? "Update" : "Save"}
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                Required for generation. Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" className="underline">platform.openai.com</a>
-              </p>
-            </div>
-            
-            <div className="space-y-2 mt-4">
-              <Label>From Email Address</Label>
-              <Input 
-                defaultValue={workspace?.resend_from_email || ""}
-                onBlur={(e) => handleUpdate("resend_from_email", e.target.value)}
-                placeholder="sales@yourdomain.com"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Must be a verified domain in Resend.
-              </p>
-            </div>
-
-            <div className="space-y-2 mt-4">
-              <Label>Sender Name (Freedom Mode)</Label>
-              <Input 
-                defaultValue={workspace?.resend_from_name || ""}
-                onBlur={(e) => handleUpdate("resend_from_name", e.target.value)}
-                placeholder="John Doe @ Company"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                The name recipients will see in their inbox.
-              </p>
-            </div>
-
-            <div className="pt-4 border-t border-dashed">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label>Gmail Inbox</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {workspace?.gmail_email || "No inbox connected"}
-                  </div>
-                </div>
-                <Button 
-                  size="sm"
-                  variant={workspace?.gmail_connected ? "outline" : "default"} 
-                  onClick={connectGmail}
-                >
-                  {workspace?.gmail_connected ? "Reconnect" : "Connect Gmail"}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Product Details</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-             <div className="space-y-2">
-              <Label>Workspace Name</Label>
-              <Input 
-                defaultValue={workspace?.name || ""}
-                onBlur={(e) => handleUpdate("name", e.target.value)}
-              />
-              <p className="text-[10px] text-muted-foreground">Internal identifier for your workspace.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Product Name</Label>
-              <Input 
-                defaultValue={workspace?.product_name || ""}
-                onBlur={(e) => handleUpdate("product_name", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Website</Label>
-              <Input 
-                defaultValue={workspace?.product_website || ""}
-                onBlur={(e) => handleUpdate("product_website", e.target.value)}
-                placeholder="https://yourwebsite.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone Number (Optional)</Label>
-              <Input 
-                defaultValue={workspace?.product_phone || ""}
-                onBlur={(e) => handleUpdate("product_phone", e.target.value)}
-                placeholder="+1 (555) 000-0000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Demo Link (Optional)</Label>
-              <Input 
-                defaultValue={workspace?.product_demo_link || ""}
-                onBlur={(e) => handleUpdate("product_demo_link", e.target.value)}
-                placeholder="https://calendly.com/your-demo"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>One Liner</Label>
-              <Input 
-                defaultValue={workspace?.product_one_liner || ""}
-                onBlur={(e) => handleUpdate("product_one_liner", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tone</Label>
-              <Input 
-                defaultValue={workspace?.tone || ""}
-                onBlur={(e) => handleUpdate("tone", e.target.value)}
-                placeholder="Friendly but professional"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Call to Action (CTA)</Label>
-              <Input 
-                defaultValue={workspace?.cta || ""}
-                onBlur={(e) => handleUpdate("cta", e.target.value)}
-                placeholder="Are you open to a brief call next week?"
-              />
-            </div>
-          </CardContent>
-        </Card>
+    <div className="p-8 space-y-8 max-w-5xl mx-auto bg-background min-h-screen">
+      <div className="flex justify-between items-center border-b pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">Outreach Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">Configure your mail servers, AI keys, and product descriptions</p>
+        </div>
+        <Button onClick={handleSeedDemoLeads} variant="outline" className="flex items-center gap-2 border-primary/20 hover:border-primary/50 transition-all">
+          <PlusCircle className="w-4 h-4 text-primary" /> Load Demo Leads
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Context & Instructions</CardTitle></CardHeader>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left Hand: SMTP & IMAP Configuration */}
+        <div className="space-y-8">
+          {/* SMTP Card */}
+          <Card className="border border-muted/80 shadow-md">
+            <CardHeader className="space-y-1">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-blue-500" /> Outbound SMTP Server
+                </CardTitle>
+                {workspace?.smtp_configured ? (
+                  <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-[10px]">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">Unconfigured</Badge>
+                )}
+              </div>
+              <CardDescription>Setup details to send marketing/outreach emails</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label htmlFor="smtp_host" className="text-xs">SMTP Host {renderSaveIndicator("smtp_host")}</Label>
+                  <Input 
+                    id="smtp_host"
+                    defaultValue={workspace?.smtp_host || ""}
+                    placeholder="smtp.gmail.com"
+                    onBlur={(e) => handleUpdateField("smtp_host", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="smtp_port" className="text-xs">Port {renderSaveIndicator("smtp_port")}</Label>
+                  <Input 
+                    id="smtp_port"
+                    defaultValue={workspace?.smtp_port || 587}
+                    placeholder="587"
+                    type="number"
+                    onBlur={(e) => handleUpdateField("smtp_port", parseInt(e.target.value || "587"))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="smtp_username" className="text-xs">SMTP Username {renderSaveIndicator("smtp_username")}</Label>
+                <Input 
+                  id="smtp_username"
+                  defaultValue={workspace?.smtp_username || ""}
+                  placeholder="sales@yourdomain.com"
+                  onBlur={(e) => handleUpdateField("smtp_username", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs flex justify-between">
+                  <span>SMTP Password {renderSaveIndicator("smtp_password")}</span>
+                  {workspace?.smtp_configured && <span className="text-[10px] text-muted-foreground">•••••••• (Saved)</span>}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input 
+                      type={showSmtpPass ? "text" : "password"}
+                      placeholder="Enter SMTP App Password"
+                      value={smtpPassword}
+                      onChange={(e) => setSmtpPassword(e.target.value)}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowSmtpPass(!showSmtpPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                    >
+                      {showSmtpPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button variant="secondary" onClick={() => handleUpdatePassword("smtp")} disabled={!smtpPassword}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed">
+                <div className="space-y-1">
+                  <Label htmlFor="smtp_from_email" className="text-xs">From Email {renderSaveIndicator("smtp_from_email")}</Label>
+                  <Input 
+                    id="smtp_from_email"
+                    defaultValue={workspace?.smtp_from_email || ""}
+                    placeholder="hello@domain.com"
+                    onBlur={(e) => handleUpdateField("smtp_from_email", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="smtp_from_name" className="text-xs">From Name {renderSaveIndicator("smtp_from_name")}</Label>
+                  <Input 
+                    id="smtp_from_name"
+                    defaultValue={workspace?.smtp_from_name || ""}
+                    placeholder="John Doe"
+                    onBlur={(e) => handleUpdateField("smtp_from_name", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleTestSmtp} disabled={testingSmtp} className="w-full mt-2" variant="outline">
+                {testingSmtp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testing...
+                  </>
+                ) : (
+                  "Test SMTP Connection"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* IMAP Card */}
+          <Card className="border border-muted/80 shadow-md">
+            <CardHeader className="space-y-1">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Server className="w-5 h-5 text-indigo-500" /> Inbound IMAP Server
+                </CardTitle>
+                {workspace?.imap_configured ? (
+                  <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-[10px]">Configured</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">Unconfigured</Badge>
+                )}
+              </div>
+              <CardDescription>Setup details to poll lead replies automatically</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label htmlFor="imap_host" className="text-xs">IMAP Host {renderSaveIndicator("imap_host")}</Label>
+                  <Input 
+                    id="imap_host"
+                    defaultValue={workspace?.imap_host || ""}
+                    placeholder="imap.gmail.com"
+                    onBlur={(e) => handleUpdateField("imap_host", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="imap_port" className="text-xs">Port {renderSaveIndicator("imap_port")}</Label>
+                  <Input 
+                    id="imap_port"
+                    defaultValue={workspace?.imap_port || 993}
+                    placeholder="993"
+                    type="number"
+                    onBlur={(e) => handleUpdateField("imap_port", parseInt(e.target.value || "993"))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="imap_username" className="text-xs">IMAP Username {renderSaveIndicator("imap_username")}</Label>
+                <Input 
+                  id="imap_username"
+                  defaultValue={workspace?.imap_username || ""}
+                  placeholder="inbox@yourdomain.com"
+                  onBlur={(e) => handleUpdateField("imap_username", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs flex justify-between">
+                  <span>IMAP Password {renderSaveIndicator("imap_password")}</span>
+                  {workspace?.imap_configured && <span className="text-[10px] text-muted-foreground">•••••••• (Saved)</span>}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input 
+                      type={showImapPass ? "text" : "password"}
+                      placeholder="Enter IMAP App Password"
+                      value={imapPassword}
+                      onChange={(e) => setImapPassword(e.target.value)}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowImapPass(!showImapPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                    >
+                      {showImapPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button variant="secondary" onClick={() => handleUpdatePassword("imap")} disabled={!imapPassword}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              <Button onClick={handleTestImap} disabled={testingImap} className="w-full mt-2" variant="outline">
+                {testingImap ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testing...
+                  </>
+                ) : (
+                  "Test IMAP Connection"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Hand: AI Config & Product details */}
+        <div className="space-y-8">
+          {/* OpenAI AI Card */}
+          <Card className="border border-muted/80 shadow-md">
+            <CardHeader className="space-y-1">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-yellow-500" /> AI Engine Configuration
+                </CardTitle>
+                {workspace?.openai_configured ? (
+                  <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-[10px]">Active</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
+                )}
+              </div>
+              <CardDescription>OpenAI API Key settings to generate copywriting and reply drafts</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-xs flex justify-between">
+                  <span>OpenAI API Key {renderSaveIndicator("openai_api_key")}</span>
+                  {workspace?.openai_configured && <span className="text-[10px] text-muted-foreground">sk-•••••••• (Saved)</span>}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input 
+                      type={showOpenaiKey ? "text" : "password"}
+                      placeholder="sk-proj-..."
+                      value={openaiKey}
+                      onChange={(e) => setOpenaiKey(e.target.value)}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                    >
+                      {showOpenaiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button variant="secondary" onClick={handleUpdateOpenAI} disabled={!openaiKey}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1 pt-2 border-t border-dashed">
+                <Label htmlFor="openai_model" className="text-xs">
+                  AI Model {renderSaveIndicator("openai_model")}
+                </Label>
+                <select
+                  id="openai_model"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                  value={workspace?.openai_model || "gpt-4o-mini"}
+                  onChange={(e) => handleUpdateField("openai_model", e.target.value)}
+                >
+                  <option value="gpt-4o-mini" className="bg-card text-foreground">gpt-4o-mini (Default & Fast)</option>
+                  <option value="gpt-4o" className="bg-card text-foreground">gpt-4o (High Quality)</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Identity Card */}
+          <Card className="border border-muted/80 shadow-md">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Database className="w-5 h-5 text-emerald-500" /> Product / Service Details
+              </CardTitle>
+              <CardDescription>Configure the product or service details used by copywriters</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="product_name" className="text-xs">Product / Service Name {renderSaveIndicator("product_name")}</Label>
+                  <Input 
+                    id="product_name"
+                    defaultValue={workspace?.product_name || ""}
+                    placeholder="SaaS Product or Agency Service"
+                    onBlur={(e) => handleUpdateField("product_name", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="product_website" className="text-xs">Website {renderSaveIndicator("product_website")}</Label>
+                  <Input 
+                    id="product_website"
+                    defaultValue={workspace?.product_website || ""}
+                    placeholder="https://company.com"
+                    onBlur={(e) => handleUpdateField("product_website", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="product_phone" className="text-xs">Phone {renderSaveIndicator("product_phone")}</Label>
+                  <Input 
+                    id="product_phone"
+                    defaultValue={workspace?.product_phone || ""}
+                    placeholder="+1 (555) 000-0000"
+                    onBlur={(e) => handleUpdateField("product_phone", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="product_demo_link" className="text-xs">Calendly / Booking Link {renderSaveIndicator("product_demo_link")}</Label>
+                  <Input 
+                    id="product_demo_link"
+                    defaultValue={workspace?.product_demo_link || ""}
+                    placeholder="https://calendly.com/booking"
+                    onBlur={(e) => handleUpdateField("product_demo_link", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="product_one_liner" className="text-xs">One Liner Pitch / Value Prop {renderSaveIndicator("product_one_liner")}</Label>
+                <Input 
+                  id="product_one_liner"
+                  defaultValue={workspace?.product_one_liner || ""}
+                  placeholder="E.g., Custom development solutions for enterprise operations."
+                  onBlur={(e) => handleUpdateField("product_one_liner", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="tone" className="text-xs">Email Tone {renderSaveIndicator("tone")}</Label>
+                  <Input 
+                    id="tone"
+                    defaultValue={workspace?.tone || ""}
+                    placeholder="formal and respectful"
+                    onBlur={(e) => handleUpdateField("tone", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cta" className="text-xs">Call to Action (CTA) {renderSaveIndicator("cta")}</Label>
+                  <Input 
+                    id="cta"
+                    defaultValue={workspace?.cta || ""}
+                    placeholder="Would you be open to a call?"
+                    onBlur={(e) => handleUpdateField("cta", e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Description & Instructions (Full Width) */}
+      <Card className="border border-muted/80 shadow-md">
+        <CardHeader>
+          <CardTitle className="text-lg">Context & Instructions</CardTitle>
+          <CardDescription>Refined parameters to format emails and provide contextual guidance</CardDescription>
+        </CardHeader>
         <CardContent className="space-y-4">
-           <div className="space-y-2">
-              <Label>Full Description (Optional)</Label>
-              <Textarea 
-                className="h-32"
-                defaultValue={workspace?.product_description || ""}
-                onBlur={(e) => handleUpdate("product_description", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Custom Instructions (Optional)</Label>
-              <Textarea 
-                className="h-32"
-                defaultValue={workspace?.custom_instructions || ""}
-                onBlur={(e) => handleUpdate("custom_instructions", e.target.value)}
-                placeholder="E.g., Do not use emojis, keep paragraphs under 3 lines."
-              />
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="product_description" className="text-xs">Product / Service Description {renderSaveIndicator("product_description")}</Label>
+            <Textarea 
+              id="product_description"
+              className="h-28 leading-relaxed"
+              defaultValue={workspace?.product_description || ""}
+              placeholder="Describe your service capabilities, target pain points solved, rates/packages, and differentiators..."
+              onBlur={(e) => handleUpdateField("product_description", e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="custom_instructions" className="text-xs">Custom AI Instructions {renderSaveIndicator("custom_instructions")}</Label>
+            <Textarea 
+              id="custom_instructions"
+              className="h-24 leading-relaxed"
+              defaultValue={workspace?.custom_instructions || ""}
+              placeholder="E.g., Keep paragraphs under 3 lines, do not use exclamation marks, write in first-person plural..."
+              onBlur={(e) => handleUpdateField("custom_instructions", e.target.value)}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Badge helper to match shadcn badge
+function Badge({ children, variant = "default", className = "" }: { children: React.ReactNode, variant?: "default" | "secondary" | "outline", className?: string }) {
+  const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
+  const variants = {
+    default: "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+    secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    outline: "text-foreground border border-input hover:bg-accent hover:text-accent-foreground"
+  };
+  return (
+    <span className={`${base} ${variants[variant]} ${className}`}>
+      {children}
+    </span>
   );
 }

@@ -56,7 +56,7 @@ Output ONLY strictly valid JSON:
 
     try:
         api_key = _decrypt(workspace.openai_api_key_encrypted) if workspace.openai_api_key_encrypted else None
-        raw = await _call_openai_with_retry(system, user, max_tokens=800, api_key=api_key)
+        raw = await _call_openai_with_retry(system, user, max_tokens=800, api_key=api_key, model=workspace.openai_model)
         parsed = _safe_parse_json(raw)
         if parsed:
             return ReplyClassification(
