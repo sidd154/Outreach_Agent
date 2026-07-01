@@ -8,8 +8,10 @@ import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { SendIcon, RefreshCw, Clock, Sparkles, MessageSquare, MailWarning, TrashIcon } from "lucide-react";
+import { SendIcon, RefreshCw, Clock, Sparkles, MessageSquare, MailWarning, TrashIcon, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function FollowUpPage() {
   const [noReplyLeads, setNoReplyLeads] = useState<any[]>([]);
@@ -24,6 +26,9 @@ export default function FollowUpPage() {
   // Editing States
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
+
+  // Filtering state
+  const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
 
   useEffect(() => {
     load();
@@ -106,6 +111,7 @@ export default function FollowUpPage() {
     }
   };
 
+
   const handleSendSingle = async (leadId: string) => {
     setSending(true);
     try {
@@ -183,7 +189,7 @@ export default function FollowUpPage() {
           <TabsContent value="no_reply" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col">
             <div className="p-4 border-b flex flex-col gap-2 bg-muted/20">
               <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
-                <span>Leads emailed who didn't respond</span>
+                <span>Leads emailed who didn&apos;t respond</span>
                 <span className="font-medium text-primary">{noReplyLeads.filter(l => l.status === "generated").length} Drafts</span>
               </div>
               <div className="flex gap-2">
@@ -195,31 +201,71 @@ export default function FollowUpPage() {
                   <SendIcon className="w-3 h-3 mr-1.5" /> Send All Drafts
                 </Button>
               </div>
+
+              {/* Segmented Filter Toggle */}
+              <div className="flex bg-muted/50 rounded-lg p-0.5 mt-2 text-xs">
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`flex-1 py-1 rounded text-center transition-all ${filter === "all" ? "bg-card text-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setFilter("read")}
+                  className={`flex-1 py-1 rounded text-center transition-all ${filter === "read" ? "bg-card text-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Read
+                </button>
+                <button
+                  onClick={() => setFilter("unread")}
+                  className={`flex-1 py-1 rounded text-center transition-all ${filter === "unread" ? "bg-card text-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Unread
+                </button>
+              </div>
             </div>
             
             <ScrollArea className="flex-1">
-              {noReplyLeads.map((item) => (
-                <div 
-                  key={item.id} 
-                  onClick={() => handleSelectLead(item)}
-                  className={`p-4 border-b cursor-pointer hover:bg-accent/40 transition-all ${selected?.id === item.id ? 'bg-accent/80 border-l-4 border-l-primary' : ''}`}
-                >
-                  <div className="font-medium truncate flex items-center justify-between">
-                    <span className="font-semibold text-sm">{item.contact_name || item.org_name || item.email}</span>
-                    {getTimelineBadge(item)}
-                  </div>
-                  {item.last_sent && (
-                    <div className="text-xs text-muted-foreground truncate mt-1.5 flex justify-between items-center">
-                      <span>Last Sent: {item.last_sent.subject}</span>
-                      {item.last_sent.is_opened && <span className="text-[10px] text-green-500 font-semibold bg-green-500/10 px-1 rounded">Read</span>}
+              {noReplyLeads
+                .filter(item => {
+                  if (filter === "read") return item.last_sent?.is_opened === true;
+                  if (filter === "unread") return !item.last_sent?.is_opened;
+                  return true;
+                })
+                .map((item) => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => handleSelectLead(item)}
+                    className={`p-4 border-b cursor-pointer hover:bg-accent/40 transition-all ${selected?.id === item.id ? 'bg-accent/80 border-l-4 border-l-primary' : ''}`}
+                  >
+                    <div className="font-medium truncate flex items-center justify-between">
+                      <span className="font-semibold text-sm">{item.contact_name || item.org_name || item.email}</span>
+                      {getTimelineBadge(item)}
                     </div>
-                  )}
-                </div>
-              ))}
-              {noReplyLeads.length === 0 && (
+                    {item.last_sent && (
+                      <div className="text-xs text-muted-foreground truncate mt-2 flex justify-between items-center">
+                        <span className="truncate max-w-[70%]">Last: {item.last_sent.subject}</span>
+                        {item.last_sent.is_opened ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-green-700 font-semibold bg-green-500/15 px-2 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Read
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-semibold bg-muted px-2 py-0.5 rounded-full">
+                            Delivered (Unread)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {noReplyLeads.filter(item => {
+                if (filter === "read") return item.last_sent?.is_opened === true;
+                if (filter === "unread") return !item.last_sent?.is_opened;
+                return true;
+              }).length === 0 && (
                 <div className="p-12 text-center text-muted-foreground text-sm">
                   <MailWarning className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  All emails have replies or are new.
+                  No matching leads found.
                 </div>
               )}
             </ScrollArea>

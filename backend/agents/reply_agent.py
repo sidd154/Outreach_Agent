@@ -39,6 +39,7 @@ Drafting rules per classification:
 - out_of_office: follow-up note for their return date
 - redirect: new intro addressed to redirected contact
 - not_interested / unsubscribe / unclear: no draft (null)
+- ANTI-SPAM RULES: Write in a natural, friendly, non-promotional human tone. Do not use spam trigger words or exclamation marks, and keep responses concise and link-free.
 
 {tone_rule}
 

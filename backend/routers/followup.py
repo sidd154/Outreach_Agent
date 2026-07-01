@@ -13,6 +13,7 @@ from backend.models.reply import ReplyEvent
 from backend.auth import get_current_workspace
 from backend.agents import _call_openai_with_retry, _safe_parse_json
 from backend.services.resend_sender import _decrypt, ResendEmailSender
+from backend.config import settings
 
 router = APIRouter()
 
@@ -107,6 +108,8 @@ async def generate_followups(
         
     api_key = _decrypt(workspace.openai_api_key_encrypted) if workspace.openai_api_key_encrypted else None
     if not api_key:
+        api_key = settings.openai_api_key
+    if not api_key:
         raise HTTPException(400, "Please configure your OpenAI API Key first.")
         
     drafts_count = 0
@@ -131,6 +134,7 @@ async def generate_followups(
                 continue
                 
             # Draft a gentle non-replier follow-up
+            followup_rules = f"\n5. CUSTOM FOLLOW-UP INSTRUCTIONS (CRITICAL): {workspace.followup_instructions}" if workspace.followup_instructions else ""
             system_prompt = f"""You are a professional sales copywriter writing a polite, extremely brief follow-up email.
 PRODUCT: {workspace.product_name}
 ONE-LINER: {workspace.product_one_liner or ""}
@@ -148,7 +152,7 @@ STRICT RULES:
 1. Write a short follow-up pitch under 80 words.
 2. Be polite and restate the offer value concisely. Do not copy the original pitch.
 3. Return ONLY a valid JSON object: {{"subject": "Re: ...", "body": "..."}}
-4. No preambles or markdown wrappers. Output ONLY raw JSON."""
+4. No preambles or markdown wrappers. Output ONLY raw JSON.{followup_rules}"""
 
             user_prompt = f"Draft a follow-up email to {lead.contact_name or 'there'} at {lead.org_name or 'your company'}."
             
@@ -236,7 +240,7 @@ async def send_followup_batch(
             select(GeneratedEmail)
             .where(
                 GeneratedEmail.lead_id == lead_uuid,
-                GeneratedEmail.sent_at.isnone(),
+                GeneratedEmail.sent_at.is_(None),
                 GeneratedEmail.rejected == False,
                 GeneratedEmail.is_selected == True
             )
@@ -271,7 +275,7 @@ async def send_followup_batch(
             reply = rep_res.scalar_one_or_none()
             if reply and reply.suggested_reply_body:
                 # Send suggested reply via SMTP/Gmail
-                if reply.source == "resend":
+                if reply.source in ["resend", "imap"] or workspace.smtp_host or settings.smtp_host:
                     from backend.services.resend_sender import send_reply_via_resend
                     success = await send_reply_via_resend(workspace, reply, reply.suggested_reply_subject or f"Re: {reply.subject}", reply.suggested_reply_body)
                 else:

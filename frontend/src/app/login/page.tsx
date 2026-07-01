@@ -7,21 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email === "pixelstudios@gmail.com" && password === "PixelOutreach!2026") {
+    try {
+      const res = await api.workspace.login({ email, password });
       localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("workspaceApiKey", res.api_key);
       toast.success("Login successful");
-      router.push("/dashboard/product");
-    } else {
-      toast.error("Invalid credentials");
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message || "Invalid credentials");
     }
   };
 

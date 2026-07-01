@@ -45,17 +45,35 @@ async def lifespan(app: FastAPI):
             ("imap_port", "INTEGER DEFAULT 993"),
             ("imap_username", "VARCHAR(255)"),
             ("imap_password_encrypted", "VARCHAR"),
-            ("openai_model", "VARCHAR(100) DEFAULT 'gpt-4o-mini'")
+            ("openai_model", "VARCHAR(100) DEFAULT 'gpt-4o-mini'"),
+            ("followup_instructions", "TEXT"),
+            ("login_email", "VARCHAR(255) DEFAULT 'pixelstudios@gmail.com'"),
+            ("login_password", "VARCHAR(255) DEFAULT 'PixelOutreach!2026'"),
+            ("api_key_encrypted", "VARCHAR"),
+            ("ms_client_id", "VARCHAR(255)"),
+            ("ms_tenant_id", "VARCHAR(255)"),
+            ("ms_imap_access_token_encrypted", "VARCHAR"),
+            ("ms_imap_refresh_token_encrypted", "VARCHAR"),
+            ("ms_imap_token_expiry", "DATETIME"),
+            ("ms_imap_connected", "BOOLEAN DEFAULT 0")
+        ]
+        email_columns_to_add = [
+            ("smtp_message_id", "VARCHAR"),
         ]
         for col_name, col_type in columns_to_add:
             try:
                 await conn.execute(text(f"ALTER TABLE workspaces ADD COLUMN {col_name} {col_type}"))
             except Exception:
                 pass
+        for col_name, col_type in email_columns_to_add:
+            try:
+                await conn.execute(text(f"ALTER TABLE generated_emails ADD COLUMN {col_name} {col_type}"))
+            except Exception:
+                pass
             
-    start_scheduler()
+    # start_scheduler()  # DISABLED - re-enable after IMAP auth policy is fixed
     yield
-    stop_scheduler()
+    # stop_scheduler()
     await engine.dispose()
 
 app = FastAPI(
@@ -77,6 +95,17 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 
+from backend.routers.ms_oauth import router as ms_oauth_router
+app.include_router(ms_oauth_router)
+
+@app.get("/")
+async def root():
+    return {
+        "message": "Outreach Agent API is running.",
+        "dashboard_url": "http://localhost:3000",
+        "health_check": "/health"
+    }
+
 @app.get("/api/track/open/{email_id}")
 async def track_open(
     email_id: uuid.UUID,
@@ -95,9 +124,14 @@ async def track_open(
             email.is_opened = True
             await db.commit()
             
-    # Return 1x1 transparent GIF
+    # Return 1x1 transparent GIF with cache-prevention headers
     pixel_data = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
-    return Response(content=pixel_data, media_type="image/gif")
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+    return Response(content=pixel_data, media_type="image/gif", headers=headers)
 
 @app.get("/health")
 async def health_check():

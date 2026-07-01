@@ -36,6 +36,9 @@ class WorkspaceUpdate(BaseModel):
     resend_from_name: Optional[str] = None
     product_phone: Optional[str] = None
     product_demo_link: Optional[str] = None
+    followup_instructions: Optional[str] = None
+    login_email: Optional[str] = None
+    login_password: Optional[str] = None
     
     # SMTP
     smtp_host: Optional[str] = None
@@ -78,6 +81,9 @@ class WorkspaceResponse(WorkspaceBase):
     gmail_last_polled_at: Optional[datetime] = None
     product_phone: Optional[str] = None
     product_demo_link: Optional[str] = None
+    followup_instructions: Optional[str] = None
+    login_email: Optional[str] = None
+    login_password: Optional[str] = None
     domain_active_since: Optional[datetime] = None
     emails_sent_today: int
     warmup_reset_date: Optional[date] = None

@@ -33,7 +33,7 @@ of this example email, but do not copy its content:
 """
 
     features = "\n".join(f"- {f}" for f in (workspace_data.get("product_features") or []))
-    differentiators = "\n".join(f"- {d}" for f in (workspace_data.get("product_differentiators") or []))
+    differentiators = "\n".join(f"- {d}" for d in (workspace_data.get("product_differentiators") or []))
     pains = ", ".join(workspace_data.get("pain_points") or []) if workspace_data.get("pain_points") else "efficiency"
     
     tone = workspace_data.get("tone") or "formal and respectful"
@@ -75,6 +75,12 @@ STRICT RULES:
 - Sound like a real person writing to one specific person
 - End with exactly the CTA text provided
 - Sign off with the SENDER NAME provided
+- ANTI-SPAM WRITING RULES (CRITICAL FOR INBOX DELIVERABILITY):
+  * Keep the copy conversational, human, and direct (under 120 words).
+  * Do NOT use spam trigger words (e.g., "free", "guarantee", "risk-free", "win", "earn", "urgent", "100%", "click here").
+  * Do NOT use exclamation marks (use periods only).
+  * Avoid aggressive sales pitches, false urgency, or shouting (do not use all-caps words).
+  * Minimize formatting and do not include multiple links/URLs (at most one booking link).
 - Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
 - EXTREMELY IMPORTANT: DO NOT write any conversational text, preamble, or markdown. Output ONLY the raw JSON object.
 """
@@ -88,11 +94,31 @@ async def run_copywriter(
 ) -> EmailDraft:
 
     system = build_system_prompt(workspace_data, variation_index, style_sample, lead_data.get("org_name"))
-    user = f"Write an email to {lead_data.get('contact_name') or 'the decision maker'} at {lead_data.get('org_name') or 'the company'}."
+    user = f"Write a highly personalised cold email to {lead_data.get('contact_name') or 'the decision maker'} at {lead_data.get('org_name') or 'the company'}."
+
+    # Build rich research context
+    research_lines = []
     if research.hook:
-        user += f"\nUse this hook: {research.hook}"
+        research_lines.append(f"OPENING HOOK (use this to open the email, referencing something specific about them): {research.hook}")
+    if research.specific_products:
+        research_lines.append(f"THEIR PRODUCTS/SERVICES: {research.specific_products}")
+    if research.apparent_pain:
+        research_lines.append(f"PROBLEM THEY SOLVE (mirror this back — show you understand their world): {research.apparent_pain}")
+    if research.company_differentiators:
+        research_lines.append(f"THEIR KEY DIFFERENTIATORS (acknowledge these to show you've done research): {research.company_differentiators}")
+    if research.recent_highlights:
+        research_lines.append(f"RECENT HIGHLIGHTS (mention if relevant): {research.recent_highlights}")
+    if research.company_language:
+        research_lines.append(f"THEIR VOCABULARY (use 1-2 of these exact phrases naturally): {research.company_language}")
+    if research.motto:
+        research_lines.append(f"THEIR TAGLINE/MOTTO: {research.motto}")
     if lead_data.get("hook"):
-        user += f"\nUse this user override hook: {lead_data.get('hook')}"
+        research_lines.append(f"MANUAL OVERRIDE HOOK: {lead_data.get('hook')}")
+
+    if research_lines:
+        user += "\n\nLEAD INTELLIGENCE (use this to personalise — the email must feel like you researched them specifically):\n"
+        user += "\n".join(research_lines)
+        user += "\n\nCRITICAL: The email must reference at least one specific thing about this company from the intelligence above. Do NOT write a generic email."
 
     try:
         api_key = workspace_data.get("openai_api_key")

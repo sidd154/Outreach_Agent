@@ -29,6 +29,7 @@ class GeneratedEmail(Base):
     sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
 
     resend_email_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    smtp_message_id: Mapped[str | None] = mapped_column(String, nullable=True)
     generation_attempt: Mapped[int] = mapped_column(Integer, default=1)
 
     opened_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)

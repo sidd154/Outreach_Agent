@@ -76,11 +76,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard/generation" className={navLinkClass("/dashboard/generation")}>
               Generation Queue
             </Link>
-            <Link href="/dashboard/inbox" className={navLinkClass("/dashboard/inbox")}>
-              Inbox Replies
-            </Link>
             <Link href="/dashboard/followup" className={navLinkClass("/dashboard/followup")}>
-              Follow Up
+              Inbox & Follow-ups
             </Link>
             <Link href="/dashboard/templates" className={navLinkClass("/dashboard/templates")}>
               Templates

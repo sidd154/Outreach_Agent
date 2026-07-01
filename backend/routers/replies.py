@@ -10,6 +10,7 @@ from backend.models.reply import ReplyEvent
 from backend.models.lead import Lead
 from backend.schemas.reply import ReplyEventResponse
 from backend.auth import get_current_workspace
+from backend.config import settings
 
 router = APIRouter()
 
@@ -65,7 +66,7 @@ async def send_draft(
     if not reply.suggested_reply_body:
         raise HTTPException(400, "No draft generated")
         
-    if reply.source == "resend":
+    if reply.source in ["resend", "imap"] or workspace.smtp_host or settings.smtp_host:
         from backend.services.resend_sender import send_reply_via_resend
         success = await send_reply_via_resend(workspace, reply, reply.suggested_reply_subject or f"Re: {reply.subject}", reply.suggested_reply_body)
     else:
@@ -94,7 +95,7 @@ async def send_manual(
     if not reply:
         raise HTTPException(404)
         
-    if reply.source == "resend":
+    if reply.source in ["resend", "imap"] or workspace.smtp_host or settings.smtp_host:
         from backend.services.resend_sender import send_reply_via_resend
         success = await send_reply_via_resend(workspace, reply, data.get("subject", f"Re: {reply.subject}"), data.get("body", ""))
     else:

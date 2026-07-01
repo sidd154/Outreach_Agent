@@ -9,7 +9,7 @@ from backend.database import get_db
 from backend.models.workspace import Workspace
 from backend.schemas.workspace import WorkspaceCreate, WorkspaceUpdate, WorkspaceResponse
 from backend.auth import get_current_workspace, create_api_key
-from backend.services.resend_sender import verify_resend_key, _encrypt
+from backend.services.resend_sender import verify_resend_key, _encrypt, _decrypt
 from backend.services.pdf_parser import save_and_parse_pdf, enrich_product_from_pdf
 from backend.services.gmail_reader import get_oauth_url, handle_oauth_callback
 from backend.config import settings
@@ -18,20 +18,30 @@ router = APIRouter()
 
 @router.post("/init")
 async def init_workspace(data: WorkspaceCreate, db: AsyncSession = Depends(get_db)):
-    # Check if a workspace with this name already exists
+    # Check if a workspace with this name already exists (using first() to avoid MultipleResultsFound)
     result = await db.execute(select(Workspace).where(Workspace.name == data.name))
-    existing = result.scalar_one_or_none()
+    workspace = result.scalars().first()
     
-    plain_key, hashed_key = create_api_key()
-    
-    if existing:
-        # Update key hash so the user gets a fresh working key if they lost it
-        existing.api_key_hash = hashed_key
-        workspace = existing
+    if workspace:
+        if workspace.api_key_encrypted:
+            try:
+                plain_key = _decrypt(workspace.api_key_encrypted)
+            except Exception:
+                # If decryption fails (e.g. encryption key changed), generate a fresh one
+                plain_key, hashed_key = create_api_key()
+                workspace.api_key_hash = hashed_key
+                workspace.api_key_encrypted = _encrypt(plain_key)
+        else:
+            # Workspace exists but has no api_key_encrypted, generate it
+            plain_key, hashed_key = create_api_key()
+            workspace.api_key_hash = hashed_key
+            workspace.api_key_encrypted = _encrypt(plain_key)
     else:
+        plain_key, hashed_key = create_api_key()
         workspace = Workspace(
             name=data.name,
-            api_key_hash=hashed_key
+            api_key_hash=hashed_key,
+            api_key_encrypted=_encrypt(plain_key)
         )
         db.add(workspace)
         
@@ -39,11 +49,40 @@ async def init_workspace(data: WorkspaceCreate, db: AsyncSession = Depends(get_d
     await db.refresh(workspace)
     return {"api_key": plain_key, "workspace_id": workspace.id}
 
+@router.post("/login")
+async def login_workspace(data: Dict[str, str], db: AsyncSession = Depends(get_db)):
+    email = data.get("email")
+    password = data.get("password")
+    
+    # Check credentials (using first() to avoid MultipleResultsFound)
+    result = await db.execute(
+        select(Workspace).where(Workspace.login_email == email, Workspace.login_password == password)
+    )
+    workspace = result.scalars().first()
+    if not workspace:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+    if workspace.api_key_encrypted:
+        try:
+            plain_key = _decrypt(workspace.api_key_encrypted)
+        except Exception:
+            plain_key, hashed_key = create_api_key()
+            workspace.api_key_hash = hashed_key
+            workspace.api_key_encrypted = _encrypt(plain_key)
+            await db.commit()
+    else:
+        plain_key, hashed_key = create_api_key()
+        workspace.api_key_hash = hashed_key
+        workspace.api_key_encrypted = _encrypt(plain_key)
+        await db.commit()
+    
+    return {"api_key": plain_key, "workspace_id": workspace.id}
+
 @router.get("", response_model=WorkspaceResponse)
 async def get_workspace(workspace: Workspace = Depends(get_current_workspace)):
-    workspace.resend_credentials_set = bool(workspace.resend_api_key_encrypted)
-    workspace.global_resend_active = bool(settings.resend_api_key)
-    workspace.openai_configured = bool(workspace.openai_api_key_encrypted)
+    workspace.resend_credentials_set = False
+    workspace.global_resend_active = False
+    workspace.openai_configured = bool(workspace.openai_api_key_encrypted or settings.openai_api_key)
     workspace.smtp_configured = bool(workspace.smtp_host and workspace.smtp_username and workspace.smtp_password_encrypted)
     workspace.imap_configured = bool(workspace.imap_host and workspace.imap_username and workspace.imap_password_encrypted)
     return workspace
@@ -56,11 +95,10 @@ async def update_workspace(
 ):
     update_data = data.model_dump(exclude_unset=True)
     if "resend_api_key" in update_data:
-        workspace.resend_api_key_encrypted = _encrypt(update_data.pop("resend_api_key"))
-        workspace.resend_configured = True
+        update_data.pop("resend_api_key")
         
     if "openai_api_key" in update_data:
-        workspace.openai_api_key_encrypted = _encrypt(update_data.pop("openai_api_key"))
+        update_data.pop("openai_api_key")
 
     if "smtp_password" in update_data:
         pwd = update_data.pop("smtp_password")
@@ -76,8 +114,8 @@ async def update_workspace(
     await db.commit()
     await db.refresh(workspace)
     
-    workspace.resend_credentials_set = bool(workspace.resend_api_key_encrypted)
-    workspace.openai_configured = bool(workspace.openai_api_key_encrypted)
+    workspace.resend_credentials_set = False
+    workspace.openai_configured = bool(workspace.openai_api_key_encrypted or settings.openai_api_key)
     workspace.smtp_configured = bool(workspace.smtp_host and workspace.smtp_username and workspace.smtp_password_encrypted)
     workspace.imap_configured = bool(workspace.imap_host and workspace.imap_username and workspace.imap_password_encrypted)
     
@@ -164,6 +202,15 @@ async def gmail_poll(
 ):
     from backend.services.gmail_reader import poll_replies_for_workspace
     count = await poll_replies_for_workspace(workspace, db)
+    return {"polled_count": count}
+
+@router.post("/imap/poll-now")
+async def imap_poll(
+    db: AsyncSession = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace)
+):
+    from backend.services.imap_reader import poll_replies_via_imap
+    count = await poll_replies_via_imap(db)
     return {"polled_count": count}
 
 @router.get("/warmup-status")

@@ -129,6 +129,32 @@ async def poll_replies_via_imap(db: AsyncSession) -> int:
         port = int(workspace.imap_port or 993) if workspace.imap_host else int(settings.imap_port or 993)
         username = workspace.imap_username or settings.imap_username
         
+        # Fall back to global host if workspace imap_host is not set
+        if not host:
+            host = settings.imap_host
+            
+        if not host or not username:
+            continue
+            
+        config_key = (host, port, username)
+        if config_key in polled_configs:
+            continue
+        polled_configs.add(config_key)
+
+        # Determine auth method: Microsoft XOAUTH2 or Basic Auth
+        if workspace.ms_imap_connected and workspace.ms_imap_access_token_encrypted:
+            from backend.routers.ms_oauth import get_valid_access_token, build_xoauth2_string
+            access_token = await get_valid_access_token(workspace, db)
+            if access_token:
+                xoauth2_string = build_xoauth2_string(username, access_token)
+                count = await poll_mailbox(host, port, username, None, db, xoauth2_string=xoauth2_string)
+                total_new += count
+                continue
+            else:
+                logger.warning(f"MS OAuth2 token invalid/expired for {username}, skipping IMAP poll.")
+                continue
+
+        # Basic Auth fallback
         password = None
         if workspace.imap_host and workspace.imap_password_encrypted:
             try:
@@ -138,24 +164,15 @@ async def poll_replies_via_imap(db: AsyncSession) -> int:
         else:
             password = settings.imap_password
             
-        # Fall back to global host if workspace imap_host is not set
-        if not host:
-            host = settings.imap_host
-            
-        if not host or not username or not password:
+        if not password:
             continue
             
-        config_key = (host, port, username)
-        if config_key in polled_configs:
-            continue
-        polled_configs.add(config_key)
-        
         count = await poll_mailbox(host, port, username, password, db)
         total_new += count
         
     return total_new
 
-async def poll_mailbox(host: str, port: int, username: str, password: str, db: AsyncSession) -> int:
+async def poll_mailbox(host: str, port: int, username: str, password: str | None, db: AsyncSession, xoauth2_string: str | None = None) -> int:
     loop = asyncio.get_event_loop()
     
     def _fetch_unread():
@@ -166,7 +183,12 @@ async def poll_mailbox(host: str, port: int, username: str, password: str, db: A
                 mail = imaplib.IMAP4(host, port)
                 mail.starttls()
             
-            mail.login(username, password)
+            if xoauth2_string:
+                # Microsoft XOAUTH2 authentication
+                mail.authenticate("XOAUTH2", lambda x: xoauth2_string)
+            else:
+                mail.login(username, password)
+
             mail.select("inbox")
             
             status, response = mail.search(None, "UNSEEN")
@@ -199,6 +221,65 @@ async def poll_mailbox(host: str, port: int, username: str, password: str, db: A
             parsed = parse_imap_message(raw_email)
             if not parsed["from_email"]:
                 continue
+
+            # ---- MDN Read-Receipt Detection ----
+            # Parse the raw email to check for MDN disposition notification parts
+            raw_msg = email.message_from_bytes(raw_email)
+            is_mdn = False
+            original_message_id = None
+
+            # Check if this is an MDN (read receipt) message
+            if raw_msg.is_multipart():
+                for part in raw_msg.walk():
+                    ct = part.get_content_type()
+                    if ct == "message/disposition-notification":
+                        is_mdn = True
+                        payload = part.get_payload()
+                        if isinstance(payload, str):
+                            for line in payload.splitlines():
+                                if line.lower().startswith("original-message-id:"):
+                                    original_message_id = line.split(":", 1)[1].strip()
+                                    break
+                        break
+            
+            # Check subject line for read receipt fallback
+            subj = parsed.get("subject", "") or ""
+            if not is_mdn and any(kw in subj.lower() for kw in ["read:", "read receipt", "disposition notification"]):
+                is_mdn = True
+                # Try to find the message-id from In-Reply-To or References headers
+                original_message_id = raw_msg.get("In-Reply-To") or raw_msg.get("References", "").split()[-1] if raw_msg.get("References") else None
+
+            if is_mdn and original_message_id:
+                # Find the sent email with this smtp_message_id
+                from backend.models.email import GeneratedEmail
+                email_result = await db.execute(
+                    select(GeneratedEmail).where(GeneratedEmail.smtp_message_id == original_message_id.strip())
+                )
+                sent_email = email_result.scalar_one_or_none()
+                if sent_email and not sent_email.is_opened:
+                    sent_email.is_opened = True
+                    sent_email.opened_at = datetime.datetime.now()
+                    await db.commit()
+                    logger.info(f"MDN read receipt: marked email {sent_email.id} as opened (from {parsed['from_email']})")
+                
+                # Mark the MDN notification itself as read in IMAP
+                def _mark_mdn_read(msg_num):
+                    try:
+                        if port == 993:
+                            m = imaplib.IMAP4_SSL(host, port)
+                        else:
+                            m = imaplib.IMAP4(host, port)
+                            m.starttls()
+                        m.login(username, password)
+                        m.select("inbox")
+                        m.store(msg_num, "+FLAGS", "\\Seen")
+                        m.close()
+                        m.logout()
+                    except Exception as e:
+                        logger.error(f"Failed to mark MDN message {msg_num} as seen: {e}")
+                await loop.run_in_executor(None, _mark_mdn_read, num)
+                continue  # Don't process MDN as a regular reply
+            # ---- End MDN Detection ----
                 
             # Match lead
             lead_result = await db.execute(select(Lead).where(
@@ -271,3 +352,4 @@ async def poll_mailbox(host: str, port: int, username: str, password: str, db: A
             logger.error(f"Failed to process IMAP message: {e}")
             
     return new_count
+

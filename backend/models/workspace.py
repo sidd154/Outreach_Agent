@@ -14,6 +14,7 @@ class Workspace(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     api_key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Product identity
     product_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -42,6 +43,9 @@ class Workspace(Base):
     email_length: Mapped[str] = mapped_column(String(50), default="medium (120-200 words)")
     language: Mapped[str] = mapped_column(String(50), default="English")
     custom_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    followup_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    login_email: Mapped[str | None] = mapped_column(String(255), default="pixelstudios@gmail.com")
+    login_password: Mapped[str | None] = mapped_column(String(255), default="PixelOutreach!2026")
 
     # AI
     openai_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -60,6 +64,14 @@ class Workspace(Base):
     imap_port: Mapped[int] = mapped_column(Integer, default=993)
     imap_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     imap_password_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Microsoft OAuth2 for IMAP (XOAUTH2)
+    ms_client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ms_tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ms_imap_access_token_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    ms_imap_refresh_token_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)
+    ms_imap_token_expiry: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    ms_imap_connected: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Resend
     resend_api_key_encrypted: Mapped[str | None] = mapped_column(String, nullable=True)

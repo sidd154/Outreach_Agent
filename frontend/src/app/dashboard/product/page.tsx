@@ -11,14 +11,11 @@ import { Label } from "@/components/ui/label";
 import { 
   Eye, 
   EyeOff, 
-  CheckCircle, 
-  XCircle, 
   Loader2, 
   Server, 
   Mail, 
   Database, 
   Sparkles,
-  RefreshCw,
   PlusCircle
 } from "lucide-react";
 
@@ -33,12 +30,18 @@ export default function ProductSettingsPage() {
   // Password Visibility States
   const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [showImapPass, setShowImapPass] = useState(false);
-  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
 
   // Field Inputs (uncontrolled defaultValues, but local state for passwords/keys to send in testing/updating)
   const [smtpPassword, setSmtpPassword] = useState("");
   const [imapPassword, setImapPassword] = useState("");
-  const [openaiKey, setOpenaiKey] = useState("");
+
+  // Microsoft OAuth2 state
+  const [msOauthStatus, setMsOauthStatus] = useState<any>(null);
+  const [msConnecting, setMsConnecting] = useState(false);
+  const [msDeviceCode, setMsDeviceCode] = useState<string | null>(null);
+  const [msUserCode, setMsUserCode] = useState<string | null>(null);
+  const [msVerifyUrl, setMsVerifyUrl] = useState<string | null>(null);
+  const [msPollInterval, setMsPollInterval] = useState<any>(null);
 
   // Saving states per field for auto-save feedback
   const [savingFields, setSavingFields] = useState<Record<string, string>>({});
@@ -53,6 +56,11 @@ export default function ProductSettingsPage() {
         }
         const ws = await api.workspace.get();
         setWorkspace(ws);
+        // Load MS OAuth status
+        try {
+          const ms = await api.msOauth.status();
+          setMsOauthStatus(ms);
+        } catch {}
       } catch (e: any) {
         if (e.status === 401) {
           try {
@@ -120,27 +128,7 @@ export default function ProductSettingsPage() {
     }
   };
 
-  const handleUpdateOpenAI = async () => {
-    if (!openaiKey) return;
-    setSavingFields(prev => ({ ...prev, "openai_api_key": "saving" }));
-    try {
-      const updated = await api.workspace.update({ openai_api_key: openaiKey });
-      setWorkspace(updated);
-      setOpenaiKey("");
-      setSavingFields(prev => ({ ...prev, "openai_api_key": "saved" }));
-      toast.success("OpenAI Key saved successfully");
-      setTimeout(() => {
-        setSavingFields(prev => {
-          const copy = { ...prev };
-          delete copy["openai_api_key"];
-          return copy;
-        });
-      }, 2000);
-    } catch {
-      setSavingFields(prev => ({ ...prev, "openai_api_key": "error" }));
-      toast.error("Failed to save OpenAI API Key");
-    }
-  };
+
 
   const handleTestSmtp = async () => {
     setTestingSmtp(true);
@@ -186,6 +174,59 @@ export default function ProductSettingsPage() {
     }
   };
 
+  const handleMsOauthConnect = async () => {
+    setMsConnecting(true);
+    try {
+      const res = await api.msOauth.start();
+      setMsDeviceCode(res.device_code);
+      setMsUserCode(res.user_code);
+      setMsVerifyUrl(res.verification_uri);
+      // Open browser tab for user
+      window.open(res.verification_uri, "_blank");
+      toast.info(`Go to ${res.verification_uri} and enter code: ${res.user_code}`);
+      // Start polling
+      const interval = setInterval(async () => {
+        try {
+          const pollRes = await api.msOauth.poll(res.device_code);
+          if (pollRes.status === "connected") {
+            clearInterval(interval);
+            setMsPollInterval(null);
+            setMsDeviceCode(null);
+            setMsUserCode(null);
+            setMsVerifyUrl(null);
+            setMsConnecting(false);
+            const ms = await api.msOauth.status();
+            setMsOauthStatus(ms);
+            toast.success("Microsoft OAuth2 connected! IMAP is now active.");
+          } else if (pollRes.status === "declined" || pollRes.status === "expired") {
+            clearInterval(interval);
+            setMsPollInterval(null);
+            setMsConnecting(false);
+            toast.error(`Authorization ${pollRes.status}. Please try again.`);
+          }
+        } catch {}
+      }, (res.interval || 5) * 1000);
+      setMsPollInterval(interval);
+    } catch (e: any) {
+      setMsConnecting(false);
+      toast.error(e.message || "Failed to start Microsoft OAuth2 flow. Make sure Client ID and Tenant ID are saved.");
+    }
+  };
+
+  const handleMsOauthDisconnect = async () => {
+    if (msPollInterval) { clearInterval(msPollInterval); setMsPollInterval(null); }
+    try {
+      await api.msOauth.disconnect();
+      setMsOauthStatus({ connected: false, client_id: msOauthStatus?.client_id || "", tenant_id: msOauthStatus?.tenant_id || "" });
+      setMsConnecting(false);
+      setMsDeviceCode(null);
+      setMsUserCode(null);
+      toast.success("Microsoft OAuth2 disconnected.");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to disconnect");
+    }
+  };
+
   const handleSeedDemoLeads = async () => {
     try {
       const res = await api.workspace.seedDemoLeads();
@@ -203,8 +244,8 @@ export default function ProductSettingsPage() {
     const state = savingFields[field];
     if (!state) return null;
     if (state === "saving") return <span className="text-[10px] text-blue-500 animate-pulse ml-2">Saving...</span>;
-    if (state === "saved") return <span className="text-[10px] text-green-500 ml-2">Saved ✓</span>;
-    if (state === "error") return <span className="text-[10px] text-red-500 ml-2">Error ✗</span>;
+    if (state === "saved") return <span className="text-[10px] text-green-500 ml-2">Saved</span>;
+    if (state === "error") return <span className="text-[10px] text-red-500 ml-2">Error</span>;
     return null;
   };
 
@@ -421,6 +462,106 @@ export default function ProductSettingsPage() {
                   "Test IMAP Connection"
                 )}
               </Button>
+
+              {/* Microsoft OAuth2 Section */}
+              <div className="mt-4 border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Microsoft OAuth2 (XOAUTH2)</p>
+                    <p className="text-xs text-muted-foreground">Required for Microsoft 365 work accounts where Basic Auth is blocked</p>
+                  </div>
+                  {msOauthStatus?.connected && (
+                    <span className="text-xs bg-green-500/15 text-green-600 border border-green-500/30 rounded-full px-2 py-0.5">Connected</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Azure Client ID {renderSaveIndicator("ms_client_id")}</Label>
+                    <Input
+                      id="ms_client_id"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      defaultValue={msOauthStatus?.client_id || workspace?.ms_client_id || ""}
+                      onBlur={(e) => handleUpdateField("ms_client_id", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Azure Tenant ID {renderSaveIndicator("ms_tenant_id")}</Label>
+                    <Input
+                      id="ms_tenant_id"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      defaultValue={msOauthStatus?.tenant_id || workspace?.ms_tenant_id || ""}
+                      onBlur={(e) => handleUpdateField("ms_tenant_id", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Device Code UI */}
+                {msDeviceCode && msUserCode && (
+                  <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-2">
+                    <p className="text-xs font-medium text-blue-600">Waiting for authorization...</p>
+                    <p className="text-xs text-muted-foreground">A browser tab has opened. Sign in with your Microsoft account and enter this code:</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-lg font-bold tracking-widest bg-muted px-3 py-1 rounded">{msUserCode}</code>
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => window.open(msVerifyUrl!, "_blank")}>
+                        Open Browser
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  {msOauthStatus?.connected ? (
+                    <Button variant="destructive" size="sm" className="flex-1 text-xs" onClick={handleMsOauthDisconnect}>
+                      Disconnect Microsoft OAuth2
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="flex-1 text-xs bg-[#0078d4] hover:bg-[#106ebe] text-white"
+                      onClick={handleMsOauthConnect}
+                      disabled={msConnecting}
+                    >
+                      {msConnecting ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Waiting...</> : "Connect Microsoft Account"}
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Need help? <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" className="underline text-primary">Register app in Azure Portal</a> → Add IMAP.AccessAsUser.All permission → copy Client ID &amp; Tenant ID above
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Login & Security Card */}
+          <Card className="border border-muted/80 shadow-md">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Workspace Login Settings
+              </CardTitle>
+              <CardDescription>Configure the login credentials used to access the dashboard</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="login_email" className="text-xs">Login Email {renderSaveIndicator("login_email")}</Label>
+                <Input 
+                  id="login_email"
+                  defaultValue={workspace?.login_email || "pixelstudios@gmail.com"}
+                  placeholder="admin@domain.com"
+                  onBlur={(e) => handleUpdateField("login_email", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="login_password" className="text-xs">Login Password {renderSaveIndicator("login_password")}</Label>
+                <Input 
+                  id="login_password"
+                  type="password"
+                  defaultValue={workspace?.login_password || "PixelOutreach!2026"}
+                  placeholder="Enter new login password"
+                  onBlur={(e) => handleUpdateField("login_password", e.target.value)}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -434,43 +575,11 @@ export default function ProductSettingsPage() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-yellow-500" /> AI Engine Configuration
                 </CardTitle>
-                {workspace?.openai_configured ? (
-                  <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-[10px]">Active</Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
-                )}
               </div>
-              <CardDescription>OpenAI API Key settings to generate copywriting and reply drafts</CardDescription>
+              <CardDescription>Select the AI copywriting and reply generation model</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <Label className="text-xs flex justify-between">
-                  <span>OpenAI API Key {renderSaveIndicator("openai_api_key")}</span>
-                  {workspace?.openai_configured && <span className="text-[10px] text-muted-foreground">sk-•••••••• (Saved)</span>}
-                </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input 
-                      type={showOpenaiKey ? "text" : "password"}
-                      placeholder="sk-proj-..."
-                      value={openaiKey}
-                      onChange={(e) => setOpenaiKey(e.target.value)}
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowOpenaiKey(!showOpenaiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                    >
-                      {showOpenaiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <Button variant="secondary" onClick={handleUpdateOpenAI} disabled={!openaiKey}>
-                    Save
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1 pt-2 border-t border-dashed">
                 <Label htmlFor="openai_model" className="text-xs">
                   AI Model {renderSaveIndicator("openai_model")}
                 </Label>
@@ -599,6 +708,17 @@ export default function ProductSettingsPage() {
               defaultValue={workspace?.custom_instructions || ""}
               placeholder="E.g., Keep paragraphs under 3 lines, do not use exclamation marks, write in first-person plural..."
               onBlur={(e) => handleUpdateField("custom_instructions", e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="followup_instructions" className="text-xs">Custom AI Follow-up Instructions {renderSaveIndicator("followup_instructions")}</Label>
+            <Textarea 
+              id="followup_instructions"
+              className="h-24 leading-relaxed"
+              defaultValue={workspace?.followup_instructions || ""}
+              placeholder="E.g., Keep follow-up emails under 50 words, reference their lack of response politely, offer Tuesday/Thursday options..."
+              onBlur={(e) => handleUpdateField("followup_instructions", e.target.value)}
             />
           </div>
         </CardContent>
