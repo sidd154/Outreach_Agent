@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     auth_backend: str = "apikey"
     billing_enabled: bool = False
     queue_backend: str = "direct"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: str = "http://localhost:3000"
     backend_url: str = "http://localhost:8000"
     environment: str = "development"
     google_client_id: str = ""

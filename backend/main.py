@@ -90,10 +90,18 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Parse CORS origins robustly (handles JSON list, single/double quotes, or comma-separated string)
 import os
-allowed_origins = list(settings.cors_origins) if settings.cors_origins else []
+allowed_origins = []
+# 1. Parse settings.cors_origins (which is now a string)
+raw_settings_origins = settings.cors_origins or ""
+cleaned_settings = raw_settings_origins.strip("[]\"' ")
+for part in cleaned_settings.split(","):
+    clean_part = part.strip("[]\"' ")
+    if clean_part and clean_part not in allowed_origins:
+        allowed_origins.append(clean_part)
+
+# 2. Parse CORS_ORIGINS from environment variable if present
 env_cors = os.getenv("CORS_ORIGINS")
 if env_cors:
-    # Remove outer brackets if any and split by comma
     cleaned_env = env_cors.strip("[]\"' ")
     for part in cleaned_env.split(","):
         clean_part = part.strip("[]\"' ")
