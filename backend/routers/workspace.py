@@ -54,6 +54,20 @@ async def login_workspace(data: Dict[str, str], db: AsyncSession = Depends(get_d
     email = data.get("email")
     password = data.get("password")
     
+    # Auto-initialize default workspace if database is empty (chicken-and-egg fix)
+    total_result = await db.execute(select(Workspace))
+    if not total_result.scalars().first():
+        plain_key, hashed_key = create_api_key()
+        default_ws = Workspace(
+            name="Default Workspace",
+            api_key_hash=hashed_key,
+            api_key_encrypted=_encrypt(plain_key),
+            login_email="pixelstudios@gmail.com",
+            login_password="PixelOutreach!2026"
+        )
+        db.add(default_ws)
+        await db.commit()
+
     # Check credentials (using first() to avoid MultipleResultsFound)
     result = await db.execute(
         select(Workspace).where(Workspace.login_email == email, Workspace.login_password == password)
