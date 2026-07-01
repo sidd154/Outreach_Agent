@@ -85,9 +85,21 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Parse CORS origins robustly (handles JSON list, single/double quotes, or comma-separated string)
+import os
+allowed_origins = list(settings.cors_origins) if settings.cors_origins else []
+env_cors = os.getenv("CORS_ORIGINS")
+if env_cors:
+    # Remove outer brackets if any and split by comma
+    cleaned_env = env_cors.strip("[]\"' ")
+    for part in cleaned_env.split(","):
+        clean_part = part.strip("[]\"' ")
+        if clean_part and clean_part not in allowed_origins:
+            allowed_origins.append(clean_part)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
