@@ -27,6 +27,14 @@ async def lifespan(app: FastAPI):
     # Auto-add tracking columns to SQLite generated_emails if missing
     from sqlalchemy import text
     async with engine.begin() as conn:
+        # Automatically create database tables if they do not exist
+        from backend.database import Base
+        from backend.models.workspace import Workspace
+        from backend.models.email import GeneratedEmail
+        from backend.models.lead import Lead
+        from backend.models.blacklist import BlacklistEntry
+        await conn.run_sync(Base.metadata.create_all)
+
         try:
             await conn.execute(text("ALTER TABLE generated_emails ADD COLUMN opened_at DATETIME"))
         except Exception:
