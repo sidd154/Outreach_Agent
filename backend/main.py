@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
@@ -96,6 +99,8 @@ if env_cors:
         clean_part = part.strip("[]\"' ")
         if clean_part and clean_part not in allowed_origins:
             allowed_origins.append(clean_part)
+
+logging.info(f"CORS allowed origins configured: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
