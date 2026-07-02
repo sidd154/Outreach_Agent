@@ -605,6 +605,16 @@ export default function ProductSettingsPage() {
               <CardDescription>Configure the product or service details used by copywriters</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="workspace_name" className="text-xs">Workspace / Company Name {renderSaveIndicator("name")}</Label>
+                <Input 
+                  id="workspace_name"
+                  defaultValue={workspace?.name || ""}
+                  placeholder="e.g. Pixel Studios"
+                  onBlur={(e) => handleUpdateField("name", e.target.value)}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="product_name" className="text-xs">Product / Service Name {renderSaveIndicator("product_name")}</Label>
