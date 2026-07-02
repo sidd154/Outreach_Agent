@@ -60,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0 justify-between">
         <div className="flex flex-col flex-1 overflow-y-auto">
           <div className="p-6">
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto bg-background/95">
+      <main className="flex-1 h-full overflow-hidden bg-background/95">
         {children}
       </main>
     </div>

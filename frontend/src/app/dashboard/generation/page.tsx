@@ -184,9 +184,9 @@ export default function GenerationQueuePage() {
   const sentHistory = queue.filter(q => q.sent_at);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* Left: Email List */}
-      <div className="w-[25%] border-r bg-background flex flex-col">
+      <div className="w-[25%] border-r bg-background flex flex-col h-full overflow-hidden">
         <Tabs defaultValue="review" className="flex-1 flex flex-col">
           <div className="p-4 border-b flex flex-col gap-3">
             <TabsList className="grid w-full grid-cols-2">
@@ -263,7 +263,7 @@ export default function GenerationQueuePage() {
       </div>
 
       {/* Middle: Email Preview & Editor */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-muted/5">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-muted/5">
         {selected ? (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-2xl mx-auto space-y-4">
@@ -352,7 +352,7 @@ export default function GenerationQueuePage() {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
+          <div className="flex-1 overflow-y-auto p-4 min-h-0">
             <div className="space-y-4">
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -374,7 +374,7 @@ export default function GenerationQueuePage() {
               )}
               <div ref={chatEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Input */}
           <div className="p-4 border-t bg-muted/5 flex gap-2 items-end">
