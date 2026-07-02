@@ -1,0 +1,11 @@
+First Name,Last Name,Email Address,Company,Website URL,Role,Notes,Extra Col 1,Extra Col 2
+Elon,Musk,elon@tesla.com,Tesla Inc,https://www.tesla.com,CEO,Auto company lead,USA,Automotive
+Satya,Nadella,satya@microsoft.com,Microsoft Corporation,https://www.microsoft.com,CEO,Tech giant lead,USA,Software
+Sundar,Pichai,sundar@google.com,Google LLC,https://www.google.com,CEO,Search giant lead,USA,Search
+Tim,Cook,tim@apple.com,Apple Inc,https://www.apple.com,CEO,Hardware company lead,USA,Mobile
+Mark,Zuckerberg,zuck@meta.com,Meta Platforms,https://www.meta.com,CEO,Social network lead,USA,Social Media
+Jeff,Bezos,jeff@amazon.com,Amazon.com Inc,https://www.amazon.com,Founder,E-commerce giant,USA,Retail
+Reed,Hastings,reed@netflix.com,Netflix Inc,https://www.netflix.com,Chairman,Streaming service lead,USA,Media
+Jensen,Huang,jensen@nvidia.com,NVIDIA Corporation,https://www.nvidia.com,CEO,Graphics chip leader,USA,Hardware
+Marc,Benioff,marc@salesforce.com,Salesforce Inc,https://www.salesforce.com,CEO,CRM platform leader,USA,Cloud
+Sam,Altman,sam@openai.com,OpenAI,https://www.openai.com,CEO,AI research lab,USA,Artificial Intelligence
