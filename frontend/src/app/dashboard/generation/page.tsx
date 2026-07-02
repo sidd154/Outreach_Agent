@@ -187,7 +187,7 @@ export default function GenerationQueuePage() {
     <div className="flex h-full overflow-hidden">
       {/* Left: Email List */}
       <div className="w-[25%] border-r bg-background flex flex-col h-full overflow-hidden">
-        <Tabs defaultValue="review" className="flex-1 flex flex-col">
+        <Tabs defaultValue="review" className="flex-1 flex flex-col min-h-0">
           <div className="p-4 border-b flex flex-col gap-3">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="review">Review ({reviewQueue.length})</TabsTrigger>
