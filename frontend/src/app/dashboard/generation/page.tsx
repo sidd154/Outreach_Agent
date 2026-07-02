@@ -195,8 +195,8 @@ export default function GenerationQueuePage() {
             </TabsList>
           </div>
 
-          <TabsContent value="review" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col">
-            <div className="p-4 border-b flex flex-col gap-3">
+          <TabsContent value="review" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col min-h-0">
+            <div className="p-4 border-b flex flex-col gap-3 shrink-0">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold text-sm">Action Needed</h2>
                 <Button onClick={handleSendAll} size="sm" variant="secondary">Send Approved</Button>
@@ -205,7 +205,7 @@ export default function GenerationQueuePage() {
                 <SendIcon className="w-4 h-4" /> Approve all and send
               </Button>
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto min-h-0">
               {reviewQueue.map((item) => (
                 <div
                   key={item.id}
@@ -226,17 +226,17 @@ export default function GenerationQueuePage() {
               {reviewQueue.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground">Queue is empty</div>
               )}
-            </ScrollArea>
+            </div>
           </TabsContent>
 
-          <TabsContent value="sent" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col">
-            <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+          <TabsContent value="sent" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col min-h-0">
+            <div className="p-4 border-b flex justify-between items-center bg-muted/20 shrink-0">
               <span className="text-sm text-muted-foreground">Historically sent emails</span>
               <Button onClick={handleClearSent} size="sm" variant="destructive" className="flex gap-2">
                 <TrashIcon className="w-4 h-4" /> Remove All
               </Button>
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto min-h-0">
               {sentHistory.map((item) => (
                 <div
                   key={item.id}
@@ -257,7 +257,7 @@ export default function GenerationQueuePage() {
               {sentHistory.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground">No sent emails</div>
               )}
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
