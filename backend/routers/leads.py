@@ -103,7 +103,7 @@ async def import_leads(
     workspace: Workspace = Depends(get_current_workspace)
 ):
     content = await file.read()
-    text = content.decode("utf-8")
+    text = content.decode("utf-8-sig")  # utf-8-sig handles BOM markers in Excel CSVs
     reader = csv.DictReader(io.StringIO(text))
     
     imported = 0
@@ -112,12 +112,33 @@ async def import_leads(
     skipped_invalid = 0
     errors = []
 
+    def _find_column(row_dict: dict, aliases: list[str]) -> Optional[str]:
+        for key, val in row_dict.items():
+            if not key:
+                continue
+            # Normalise key: lowercase, replace underscores and dashes with spaces, strip whitespace
+            normalized_key = key.lower().strip().replace("_", " ").replace("-", " ")
+            for alias in aliases:
+                if normalized_key == alias:
+                    return val.strip() if val else None
+        return None
+
     for row in reader:
-        email = row.get("email", "").strip()
-        if not email:
+        # Resolve Email
+        email = _find_column(row, ["email", "email address", "e mail", "emailaddress", "mail"])
+        # Resolve Website
+        website = _find_column(row, ["website", "website url", "url", "site", "websiteurl"])
+
+        # Ignore row if email or website is missing (strict filter)
+        if not email or not website:
             skipped_invalid += 1
             continue
-            
+
+        # Basic format checks
+        if "@" not in email:
+            skipped_invalid += 1
+            continue
+
         bl = await db.execute(select(BlacklistEntry).where(
             BlacklistEntry.workspace_id == workspace.id,
             BlacklistEntry.email == email
@@ -138,18 +159,37 @@ async def import_leads(
             cid = None
             if campaign_id:
                 cid = campaign_id
-            elif row.get("campaign_id"):
-                cid = uuid.UUID(row.get("campaign_id"))
+            else:
+                raw_cid = _find_column(row, ["campaign id", "campaignid", "campaign"])
+                if raw_cid:
+                    try:
+                        cid = uuid.UUID(raw_cid)
+                    except ValueError:
+                        pass
+
+            # Resolve other columns with flexible aliases
+            org_name = _find_column(row, ["org name", "company", "company name", "organization", "companyname", "org"])
+            
+            # Resolve contact name (handle direct match or first+last name merge)
+            contact_name = _find_column(row, ["contact name", "name", "full name", "contact", "fullname", "person name"])
+            if not contact_name:
+                first_name = _find_column(row, ["first name", "firstname", "given name"])
+                last_name = _find_column(row, ["last name", "lastname", "surname"])
+                if first_name or last_name:
+                    contact_name = f"{first_name or ''} {last_name or ''}".strip()
+
+            title = _find_column(row, ["title", "job title", "role", "designation", "jobtitle"])
+            notes = _find_column(row, ["notes", "description", "note", "info", "comment"])
 
             lead = Lead(
                 workspace_id=workspace.id,
                 campaign_id=cid,
                 email=email,
-                org_name=row.get("org_name"),
-                contact_name=row.get("contact_name"),
-                title=row.get("title"),
-                website=row.get("website"),
-                notes=row.get("notes")
+                org_name=org_name,
+                contact_name=contact_name,
+                title=title,
+                website=website,
+                notes=notes
             )
             db.add(lead)
             imported += 1
