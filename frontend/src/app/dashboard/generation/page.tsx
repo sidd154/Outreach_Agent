@@ -29,6 +29,7 @@ export default function GenerationQueuePage() {
   // Live edited subject/body (controlled so chatbot updates are reflected)
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
+  const [activeTab, setActiveTab] = useState<"review" | "sent">("review");
 
   useEffect(() => {
     load();
@@ -187,79 +188,99 @@ export default function GenerationQueuePage() {
     <div className="flex h-full overflow-hidden">
       {/* Left: Email List */}
       <div className="w-[25%] border-r bg-background flex flex-col h-full overflow-hidden">
-        <Tabs defaultValue="review" className="flex-1 flex flex-col min-h-0">
-          <div className="p-4 border-b flex flex-col gap-3">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="review">Review ({reviewQueue.length})</TabsTrigger>
-              <TabsTrigger value="sent">Sent ({sentHistory.length})</TabsTrigger>
-            </TabsList>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-4 border-b flex flex-col gap-3 shrink-0">
+            <div className="grid w-full grid-cols-2 p-1 bg-muted rounded-lg">
+              <button
+                onClick={() => setActiveTab("review")}
+                className={`py-1.5 text-sm font-medium rounded-md transition-all ${
+                  activeTab === "review"
+                    ? "bg-background text-foreground shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Review ({reviewQueue.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("sent")}
+                className={`py-1.5 text-sm font-medium rounded-md transition-all ${
+                  activeTab === "sent"
+                    ? "bg-background text-foreground shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Sent ({sentHistory.length})
+              </button>
+            </div>
           </div>
 
-          <TabsContent value="review" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col min-h-0">
-            <div className="p-4 border-b flex flex-col gap-3 shrink-0">
-              <div className="flex justify-between items-center">
-                <h2 className="font-semibold text-sm">Action Needed</h2>
-                <Button onClick={handleSendAll} size="sm" variant="secondary">Send Approved</Button>
+          {activeTab === "review" ? (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-4 border-b flex flex-col gap-3 shrink-0">
+                <div className="flex justify-between items-center">
+                  <h2 className="font-semibold text-sm">Action Needed</h2>
+                  <Button onClick={handleSendAll} size="sm" variant="secondary">Send Approved</Button>
+                </div>
+                <Button onClick={handleApproveAndSendAll} className="w-full bg-blue-600 hover:bg-blue-700 shadow-sm transition-all text-white font-medium flex items-center justify-center gap-2">
+                  <SendIcon className="w-4 h-4" /> Approve all and send
+                </Button>
               </div>
-              <Button onClick={handleApproveAndSendAll} className="w-full bg-blue-600 hover:bg-blue-700 shadow-sm transition-all text-white font-medium flex items-center justify-center gap-2">
-                <SendIcon className="w-4 h-4" /> Approve all and send
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {reviewQueue.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSelected(item)}
-                  className={`p-4 border-b cursor-pointer hover:bg-accent/50 transition-colors ${selected?.id === item.id ? 'bg-accent border-l-4 border-l-primary' : ''}`}
-                >
-                  <div className="font-medium truncate flex items-center justify-between">
-                    <span>{item.lead?.contact_name || item.lead?.email}</span>
-                    {item.approved ? (
-                      <Badge className="bg-blue-500 text-xs">Approved</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">Review</Badge>
-                    )}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {reviewQueue.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelected(item)}
+                    className={`p-4 border-b cursor-pointer hover:bg-accent/50 transition-colors ${selected?.id === item.id ? 'bg-accent border-l-4 border-l-primary' : ''}`}
+                  >
+                    <div className="font-medium truncate flex items-center justify-between">
+                      <span>{item.lead?.contact_name || item.lead?.email}</span>
+                      {item.approved ? (
+                        <Badge className="bg-blue-500 text-xs">Approved</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Review</Badge>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate mt-1">{item.subject}</div>
                   </div>
-                  <div className="text-sm text-muted-foreground truncate mt-1">{item.subject}</div>
-                </div>
-              ))}
-              {reviewQueue.length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">Queue is empty</div>
-              )}
+                ))}
+                {reviewQueue.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">Queue is empty</div>
+                )}
+              </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="sent" className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col min-h-0">
-            <div className="p-4 border-b flex justify-between items-center bg-muted/20 shrink-0">
-              <span className="text-sm text-muted-foreground">Historically sent emails</span>
-              <Button onClick={handleClearSent} size="sm" variant="destructive" className="flex gap-2">
-                <TrashIcon className="w-4 h-4" /> Remove All
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {sentHistory.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSelected(item)}
-                  className={`p-4 border-b cursor-pointer hover:bg-accent/50 transition-colors ${selected?.id === item.id ? 'bg-accent border-l-4 border-l-primary' : ''}`}
-                >
-                  <div className="font-medium truncate flex items-center justify-between">
-                    <span>{item.lead?.contact_name || item.lead?.email}</span>
-                    {item.is_opened ? (
-                      <Badge className="bg-green-500 text-white text-xs hover:bg-green-600">Read</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">Sent</Badge>
-                    )}
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-4 border-b flex justify-between items-center bg-muted/20 shrink-0">
+                <span className="text-sm text-muted-foreground">Historically sent emails</span>
+                <Button onClick={handleClearSent} size="sm" variant="destructive" className="flex gap-2">
+                  <TrashIcon className="w-4 h-4" /> Remove All
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {sentHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelected(item)}
+                    className={`p-4 border-b cursor-pointer hover:bg-accent/50 transition-colors ${selected?.id === item.id ? 'bg-accent border-l-4 border-l-primary' : ''}`}
+                  >
+                    <div className="font-medium truncate flex items-center justify-between">
+                      <span>{item.lead?.contact_name || item.lead?.email}</span>
+                      {item.is_opened ? (
+                        <Badge className="bg-green-500 text-white text-xs hover:bg-green-600">Read</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Sent</Badge>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate mt-1">{item.subject}</div>
                   </div>
-                  <div className="text-sm text-muted-foreground truncate mt-1">{item.subject}</div>
-                </div>
-              ))}
-              {sentHistory.length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">No sent emails</div>
-              )}
+                ))}
+                {sentHistory.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">No sent emails</div>
+                )}
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
 
       {/* Middle: Email Preview & Editor */}
