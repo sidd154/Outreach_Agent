@@ -40,11 +40,18 @@ of this example email, but do not copy its content:
     email_length = workspace_data.get("email_length") or "medium (120-200 words)"
     language = workspace_data.get("language") or "English"
 
+    signoff = workspace_data.get("email_signoff") or "Best regards,"
+    sender_name = workspace_data.get("resend_from_name") or workspace_data.get("name")
+    company_name = workspace_data.get("name") or ""
+    website = workspace_data.get("product_website") or ""
+    phone = workspace_data.get("product_phone") or ""
+
     return f"""
 You are an expert B2B cold email copywriter.
 
 PRODUCT: {workspace_data.get("product_name")}
-WEBSITE: {workspace_data.get("product_website") or "N/A"}
+WEBSITE: {website or "N/A"}
+PHONE: {phone or "N/A"}
 ONE-LINER: {workspace_data.get("product_one_liner") or ""}
 DESCRIPTION: {workspace_data.get("product_description") or ""}
 PRICING: {workspace_data.get("product_pricing") or "not specified"}
@@ -60,8 +67,9 @@ TONE: {tone}
 LENGTH: {email_length}
 LANGUAGE: {language}
 LOCAL CONTEXT: {workspace_data.get("local_context") or ""}
-SENDER NAME: {workspace_data.get("resend_from_name") or workspace_data.get("name")}
+SENDER NAME: {sender_name}
 CTA: {workspace_data.get("cta") or "Would you be open to a brief call?"}
+SIGNOFF: {signoff}
 {f"CUSTOM INSTRUCTIONS (CRITICAL): {workspace_data.get('custom_instructions')}" if workspace_data.get('custom_instructions') else ""}
 
 VARIATION INSTRUCTION: {variation_instruction}
@@ -70,11 +78,16 @@ VARIATION INSTRUCTION: {variation_instruction}
 
 STRICT RULES:
 - IMPORTANT: This email MUST be for {org_name or "the recipient's company"} specifically.
-- Open with personalisation hook if provided
-- Never use: "revolutionary", "game-changer", "leverage", "synergy"
-- Sound like a real person writing to one specific person
-- End with exactly the CTA text provided
-- Sign off with the SENDER NAME provided
+- Open with personalisation hook if provided.
+- Never use: "revolutionary", "game-changer", "leverage", "synergy".
+- Sound like a real person writing to one specific person.
+- End with exactly the CTA text provided.
+- Right after the CTA, include a clean signature block formatted EXACTLY like this:
+  {signoff}
+  {sender_name}
+  {company_name}
+  {website}{f" | {phone}" if phone else ""}
+- CRITICAL: In your signature block, write the website or phone number directly. Do NOT prefix them with labels like "Website:", "Phone:", "Web:", or "Cell:".
 - ANTI-SPAM WRITING RULES (CRITICAL FOR INBOX DELIVERABILITY):
   * Keep the copy conversational, human, and direct (under 120 words).
   * Do NOT use spam trigger words (e.g., "free", "guarantee", "risk-free", "win", "earn", "urgent", "100%", "click here").

@@ -94,6 +94,7 @@ class Workspace(Base):
     # Footer / Contact Info
     product_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     product_demo_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    email_signoff: Mapped[str | None] = mapped_column(String(255), default="Best regards,")
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, onupdate=utcnow, nullable=True)

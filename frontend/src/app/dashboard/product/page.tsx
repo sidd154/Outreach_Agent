@@ -101,6 +101,10 @@ export default function ProductSettingsPage() {
     }
   };
 
+  const handleFieldChange = (field: string, value: any) => {
+    setWorkspace((prev: any) => prev ? { ...prev, [field]: value } : prev);
+  };
+
   const handleUpdatePassword = async (type: "smtp" | "imap") => {
     const pwdValue = type === "smtp" ? smtpPassword : imapPassword;
     if (!pwdValue) return;
@@ -605,14 +609,27 @@ export default function ProductSettingsPage() {
               <CardDescription>Configure the product or service details used by copywriters</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="workspace_name" className="text-xs">Workspace / Company Name {renderSaveIndicator("name")}</Label>
-                <Input 
-                  id="workspace_name"
-                  defaultValue={workspace?.name || ""}
-                  placeholder="e.g. Pixel Studios"
-                  onBlur={(e) => handleUpdateField("name", e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="workspace_name" className="text-xs">Workspace / Company Name {renderSaveIndicator("name")}</Label>
+                  <Input 
+                    id="workspace_name"
+                    value={workspace?.name || ""}
+                    placeholder="e.g. Pixel Studios"
+                    onChange={(e) => handleFieldChange("name", e.target.value)}
+                    onBlur={(e) => handleUpdateField("name", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="email_signoff" className="text-xs">Email Sign-off / Salutation {renderSaveIndicator("email_signoff")}</Label>
+                  <Input 
+                    id="email_signoff"
+                    value={workspace?.email_signoff || ""}
+                    placeholder="e.g. Best regards, / Warmly,"
+                    onChange={(e) => handleFieldChange("email_signoff", e.target.value)}
+                    onBlur={(e) => handleUpdateField("email_signoff", e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -620,8 +637,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="product_name" className="text-xs">Product / Service Name {renderSaveIndicator("product_name")}</Label>
                   <Input 
                     id="product_name"
-                    defaultValue={workspace?.product_name || ""}
+                    value={workspace?.product_name || ""}
                     placeholder="SaaS Product or Agency Service"
+                    onChange={(e) => handleFieldChange("product_name", e.target.value)}
                     onBlur={(e) => handleUpdateField("product_name", e.target.value)}
                   />
                 </div>
@@ -629,8 +647,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="product_website" className="text-xs">Website {renderSaveIndicator("product_website")}</Label>
                   <Input 
                     id="product_website"
-                    defaultValue={workspace?.product_website || ""}
+                    value={workspace?.product_website || ""}
                     placeholder="https://company.com"
+                    onChange={(e) => handleFieldChange("product_website", e.target.value)}
                     onBlur={(e) => handleUpdateField("product_website", e.target.value)}
                   />
                 </div>
@@ -641,8 +660,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="product_phone" className="text-xs">Phone {renderSaveIndicator("product_phone")}</Label>
                   <Input 
                     id="product_phone"
-                    defaultValue={workspace?.product_phone || ""}
+                    value={workspace?.product_phone || ""}
                     placeholder="+1 (555) 000-0000"
+                    onChange={(e) => handleFieldChange("product_phone", e.target.value)}
                     onBlur={(e) => handleUpdateField("product_phone", e.target.value)}
                   />
                 </div>
@@ -650,8 +670,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="product_demo_link" className="text-xs">Calendly / Booking Link {renderSaveIndicator("product_demo_link")}</Label>
                   <Input 
                     id="product_demo_link"
-                    defaultValue={workspace?.product_demo_link || ""}
+                    value={workspace?.product_demo_link || ""}
                     placeholder="https://calendly.com/booking"
+                    onChange={(e) => handleFieldChange("product_demo_link", e.target.value)}
                     onBlur={(e) => handleUpdateField("product_demo_link", e.target.value)}
                   />
                 </div>
@@ -661,8 +682,9 @@ export default function ProductSettingsPage() {
                 <Label htmlFor="product_one_liner" className="text-xs">One Liner Pitch / Value Prop {renderSaveIndicator("product_one_liner")}</Label>
                 <Input 
                   id="product_one_liner"
-                  defaultValue={workspace?.product_one_liner || ""}
+                  value={workspace?.product_one_liner || ""}
                   placeholder="E.g., Custom development solutions for enterprise operations."
+                  onChange={(e) => handleFieldChange("product_one_liner", e.target.value)}
                   onBlur={(e) => handleUpdateField("product_one_liner", e.target.value)}
                 />
               </div>
@@ -672,8 +694,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="tone" className="text-xs">Email Tone {renderSaveIndicator("tone")}</Label>
                   <Input 
                     id="tone"
-                    defaultValue={workspace?.tone || ""}
+                    value={workspace?.tone || ""}
                     placeholder="formal and respectful"
+                    onChange={(e) => handleFieldChange("tone", e.target.value)}
                     onBlur={(e) => handleUpdateField("tone", e.target.value)}
                   />
                 </div>
@@ -681,8 +704,9 @@ export default function ProductSettingsPage() {
                   <Label htmlFor="cta" className="text-xs">Call to Action (CTA) {renderSaveIndicator("cta")}</Label>
                   <Input 
                     id="cta"
-                    defaultValue={workspace?.cta || ""}
+                    value={workspace?.cta || ""}
                     placeholder="Would you be open to a call?"
+                    onChange={(e) => handleFieldChange("cta", e.target.value)}
                     onBlur={(e) => handleUpdateField("cta", e.target.value)}
                   />
                 </div>
@@ -691,6 +715,79 @@ export default function ProductSettingsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Live Email Template structure preview */}
+      <Card className="border border-muted/80 shadow-md bg-muted/5">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Eye className="w-5 h-5 text-purple-500" /> Live Email Template Structure Preview
+            </CardTitle>
+            <CardDescription>
+              Shows how the AI copywriting engine structures your email signature (without headers like "Website:" or "Phone:")
+            </CardDescription>
+          </div>
+          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">
+            Live Preview
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-xl border border-muted bg-card shadow-inner p-6 space-y-4 font-mono text-sm leading-relaxed text-foreground select-none max-w-3xl mx-auto">
+            {/* Subject */}
+            <div className="border-b pb-2">
+              <span className="text-muted-foreground font-semibold">Subject: </span>
+              <span className="text-foreground font-sans">
+                {workspace?.product_name || "[Product Name]"} - Quick Question
+              </span>
+            </div>
+
+            {/* Body */}
+            <div className="space-y-4 font-sans text-base text-foreground/90">
+              <p>Hi [Recipient Name],</p>
+
+              <p className="text-muted-foreground/80 italic bg-muted/20 px-3 py-2 rounded-md border border-dashed text-xs">
+                [AI-generated introduction personalized for target website details...]
+              </p>
+
+              <p>
+                {workspace?.product_one_liner || "[Your One Liner Pitch / Value Proposition will be integrated here]"}
+              </p>
+
+              <p className="text-muted-foreground/80 italic bg-muted/20 px-3 py-2 rounded-md border border-dashed text-xs">
+                [AI-generated details describing your product capabilities: {workspace?.product_name || "Product Name"}]
+              </p>
+
+              {workspace?.product_demo_link && (
+                <p>
+                  You can check out our calendar here: <span className="text-blue-600 underline cursor-pointer">{workspace.product_demo_link}</span>
+                </p>
+              )}
+
+              <p className="font-semibold text-foreground mt-4">
+                {workspace?.cta || "Would you be open to a brief call?"}
+              </p>
+
+              {/* Signature block (Exact direct values, no headers!) */}
+              <div className="pt-4 border-t border-dashed mt-4 space-y-0.5 text-sm text-foreground/80 font-sans">
+                <div>{workspace?.email_signoff || "Best regards,"}</div>
+                <div className="font-semibold text-foreground">{workspace?.resend_from_name || workspace?.name || "[Sender Name]"}</div>
+                <div className="text-muted-foreground">{workspace?.name || "[Company Name]"}</div>
+                <div className="text-muted-foreground text-xs pt-1 flex items-center gap-1.5">
+                  {workspace?.product_website && (
+                    <span className="text-blue-600 hover:underline cursor-pointer">{workspace.product_website}</span>
+                  )}
+                  {workspace?.product_website && workspace?.product_phone && (
+                    <span className="text-muted-foreground/50">|</span>
+                  )}
+                  {workspace?.product_phone && (
+                    <span>{workspace.product_phone}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Description & Instructions (Full Width) */}
       <Card className="border border-muted/80 shadow-md">
@@ -704,8 +801,9 @@ export default function ProductSettingsPage() {
             <Textarea 
               id="product_description"
               className="h-28 leading-relaxed"
-              defaultValue={workspace?.product_description || ""}
+              value={workspace?.product_description || ""}
               placeholder="Describe your service capabilities, target pain points solved, rates/packages, and differentiators..."
+              onChange={(e) => handleFieldChange("product_description", e.target.value)}
               onBlur={(e) => handleUpdateField("product_description", e.target.value)}
             />
           </div>
