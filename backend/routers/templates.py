@@ -146,12 +146,13 @@ async def apply_template(
 
         # Append workspace footer
         footer_parts = [
-            f"Website: {workspace.product_website}" if workspace.product_website else "",
-            f"Phone: {workspace.product_phone}" if workspace.product_phone else "",
-            f"Book a Demo: {workspace.product_demo_link}" if workspace.product_demo_link else "",
+            f"{workspace.email_signoff or 'Best regards,'}",
+            f"{workspace.resend_from_name or workspace.name or ''}",
+            f"{workspace.name or ''}",
+            f"{workspace.product_website or ''}" + (f" | {workspace.product_phone}" if workspace.product_phone else "")
         ]
-        footer = "\n".join(p for p in footer_parts if p)
-        full_body = f"{body}\n\n---\n{footer}"
+        footer = "\n".join(p for p in footer_parts if p.strip())
+        full_body = f"{body}\n\n{footer}"
 
         gen_email = GeneratedEmail(
             workspace_id=workspace.id,

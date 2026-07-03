@@ -98,12 +98,7 @@ async def enqueue_generation_job(
                 variation_index=i,
                 is_selected=(i == 0),
                 subject=draft.subject,
-                body=draft.body + (
-                    f"\n\n---\n"
-                    f"{f'Website: {workspace.product_website}' if workspace.product_website else ''}\n"
-                    f"{f'Phone: {workspace.product_phone}' if workspace.product_phone else ''}\n"
-                    f"{f'Book a Demo: {workspace.product_demo_link}' if workspace.product_demo_link else ''}"
-                ).strip()
+                body=draft.body
             )
             db.add(gen_email)
             results.append(gen_email)
