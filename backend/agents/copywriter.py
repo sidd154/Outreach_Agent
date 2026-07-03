@@ -82,12 +82,12 @@ STRICT RULES:
 - Never use: "revolutionary", "game-changer", "leverage", "synergy".
 - Sound like a real person writing to one specific person.
 - End with exactly the CTA text provided.
-- Right after the CTA, include a clean signature block formatted EXACTLY like this:
+- Right after the CTA, include a clean signature block. Format it EXACTLY like this:
   {signoff}
   {sender_name}
-  {company_name}
+  {"" if sender_name.lower().strip() == company_name.lower().strip() else company_name}
   {website}{f" | {phone}" if phone else ""}
-- CRITICAL: In your signature block, write the website or phone number directly. Do NOT prefix them with labels like "Website:", "Phone:", "Web:", or "Cell:".
+- CRITICAL: In your signature block, write the website or phone number directly. Do NOT prefix them with labels like "Website:", "Phone:", "Web:", or "Cell:". If the SENDER NAME and COMPANY NAME are identical, do NOT output the company name line in the signature (only output it once).
 - ANTI-SPAM WRITING RULES (CRITICAL FOR INBOX DELIVERABILITY):
   * Keep the copy conversational, human, and direct (under 120 words).
   * Do NOT use spam trigger words (e.g., "free", "guarantee", "risk-free", "win", "earn", "urgent", "100%", "click here").

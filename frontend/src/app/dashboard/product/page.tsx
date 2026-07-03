@@ -22,6 +22,8 @@ import {
 export default function ProductSettingsPage() {
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [generating, setGenerating] = useState(false);
 
   // Connection Test States
   const [testingSmtp, setTestingSmtp] = useState(false);
@@ -56,6 +58,10 @@ export default function ProductSettingsPage() {
         }
         const ws = await api.workspace.get();
         setWorkspace(ws);
+        try {
+          const lList = await api.leads.list();
+          setLeads(lList);
+        } catch {}
         // Load MS OAuth status
         try {
           const ms = await api.msOauth.status();
@@ -68,6 +74,10 @@ export default function ProductSettingsPage() {
             localStorage.setItem("workspaceApiKey", res.api_key);
             const ws = await api.workspace.get();
             setWorkspace(ws);
+            try {
+              const lList = await api.leads.list();
+              setLeads(lList);
+            } catch {}
             toast.success("Session restored");
           } catch {
             toast.error("Critical authentication error. Please refresh the page.");
@@ -103,6 +113,34 @@ export default function ProductSettingsPage() {
 
   const handleFieldChange = (field: string, value: any) => {
     setWorkspace((prev: any) => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  const handleGenerate = async () => {
+    const actionableLeads = leads
+      .filter((l) => ["new", "rejected", "researching"].includes(l.status))
+      .map((l) => l.id);
+
+    if (actionableLeads.length === 0) {
+      toast.info("No new or eligible leads found. Please import leads first!");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      await api.generate.batch({ lead_ids: actionableLeads, variations: 1 });
+      toast.success(`Started research & email generation for ${actionableLeads.length} leads in the background!`);
+      // Update local leads to 'researching'
+      setLeads(prev => prev.map(l => {
+        if (["new", "rejected", "researching"].includes(l.status)) {
+          return { ...l, status: "researching" };
+        }
+        return l;
+      }));
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate emails");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleUpdatePassword = async (type: "smtp" | "imap") => {
@@ -724,14 +762,31 @@ export default function ProductSettingsPage() {
               <Eye className="w-5 h-5 text-purple-500" /> Live Email Template Structure Preview
             </CardTitle>
             <CardDescription>
-              Shows how the AI copywriting engine structures your email signature (without headers like "Website:" or "Phone:")
+              Tweak your custom instructions and salutation sign-off directly inside the preview template, then trigger email generation.
             </CardDescription>
           </div>
           <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">
             Live Preview
           </Badge>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* Custom Copywriting Instructions inside the Preview Card */}
+          <div className="bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="custom_instructions" className="text-xs font-semibold text-purple-700 dark:text-purple-400">
+                Custom AI Copywriting Instructions {renderSaveIndicator("custom_instructions")}
+              </Label>
+            </div>
+            <Textarea
+              id="custom_instructions"
+              className="h-20 bg-background text-sm border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
+              value={workspace?.custom_instructions || ""}
+              placeholder="E.g., Keep paragraphs under 3 lines, do not use exclamation marks, write in first-person plural..."
+              onChange={(e) => handleFieldChange("custom_instructions", e.target.value)}
+              onBlur={(e) => handleUpdateField("custom_instructions", e.target.value)}
+            />
+          </div>
+
           <div className="rounded-xl border border-muted bg-card shadow-inner p-6 space-y-4 font-mono text-sm leading-relaxed text-foreground select-none max-w-3xl mx-auto">
             {/* Subject */}
             <div className="border-b pb-2">
@@ -768,10 +823,27 @@ export default function ProductSettingsPage() {
               </p>
 
               {/* Signature block (Exact direct values, no headers!) */}
-              <div className="pt-4 border-t border-dashed mt-4 space-y-0.5 text-sm text-foreground/80 font-sans">
-                <div>{workspace?.email_signoff || "Best regards,"}</div>
+              <div className="pt-4 border-t border-dashed mt-4 space-y-2 text-sm text-foreground/80 font-sans">
+                {/* Editable Salutation */}
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="email_signoff"
+                    className="w-48 h-8 text-sm px-2 py-1 bg-muted/40 border-dashed focus-visible:ring-primary"
+                    value={workspace?.email_signoff || ""}
+                    placeholder="e.g. Best regards,"
+                    onChange={(e) => handleFieldChange("email_signoff", e.target.value)}
+                    onBlur={(e) => handleUpdateField("email_signoff", e.target.value)}
+                  />
+                  {renderSaveIndicator("email_signoff")}
+                </div>
+                
                 <div className="font-semibold text-foreground">{workspace?.resend_from_name || workspace?.name || "[Sender Name]"}</div>
-                <div className="text-muted-foreground">{workspace?.name || "[Company Name]"}</div>
+                
+                {/* Only show Company name if it differs from the sender name to prevent double output */}
+                {workspace?.name && workspace?.resend_from_name && workspace?.name.toLowerCase().trim() !== workspace?.resend_from_name.toLowerCase().trim() && (
+                  <div className="text-muted-foreground">{workspace.name}</div>
+                )}
+                
                 <div className="text-muted-foreground text-xs pt-1 flex items-center gap-1.5">
                   {workspace?.product_website && (
                     <span className="text-blue-600 hover:underline cursor-pointer">{workspace.product_website}</span>
@@ -785,6 +857,26 @@ export default function ProductSettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Integrated Generate Button */}
+          <div className="pt-4 border-t flex justify-center">
+            <Button
+              onClick={handleGenerate}
+              disabled={generating || leads.filter(l => ["new", "rejected", "researching"].includes(l.status)).length === 0}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-medium shadow-md transition-all flex items-center gap-2 px-6"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Emails ({leads.filter(l => ["new", "rejected", "researching"].includes(l.status)).length} Leads)
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -805,17 +897,6 @@ export default function ProductSettingsPage() {
               placeholder="Describe your service capabilities, target pain points solved, rates/packages, and differentiators..."
               onChange={(e) => handleFieldChange("product_description", e.target.value)}
               onBlur={(e) => handleUpdateField("product_description", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="custom_instructions" className="text-xs">Custom AI Instructions {renderSaveIndicator("custom_instructions")}</Label>
-            <Textarea 
-              id="custom_instructions"
-              className="h-24 leading-relaxed"
-              defaultValue={workspace?.custom_instructions || ""}
-              placeholder="E.g., Keep paragraphs under 3 lines, do not use exclamation marks, write in first-person plural..."
-              onBlur={(e) => handleUpdateField("custom_instructions", e.target.value)}
             />
           </div>
 
