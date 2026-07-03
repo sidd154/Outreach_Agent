@@ -40,6 +40,8 @@ class WorkspaceUpdate(BaseModel):
     login_email: Optional[str] = None
     login_password: Optional[str] = None
     email_signoff: Optional[str] = None
+    first_para_instructions: Optional[str] = None
+    second_para_instructions: Optional[str] = None
     
     # SMTP
     smtp_host: Optional[str] = None
@@ -85,6 +87,8 @@ class WorkspaceResponse(WorkspaceBase):
     followup_instructions: Optional[str] = None
     login_email: Optional[str] = None
     email_signoff: Optional[str] = None
+    first_para_instructions: Optional[str] = None
+    second_para_instructions: Optional[str] = None
     login_password: Optional[str] = None
     domain_active_since: Optional[datetime] = None
     emails_sent_today: int

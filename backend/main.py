@@ -67,7 +67,9 @@ async def lifespan(app: FastAPI):
             ("ms_imap_refresh_token_encrypted", "VARCHAR"),
             ("ms_imap_token_expiry", "DATETIME"),
             ("ms_imap_connected", "BOOLEAN DEFAULT 0"),
-            ("email_signoff", "VARCHAR(255) DEFAULT 'Best regards,'")
+            ("email_signoff", "TEXT"),
+            ("first_para_instructions", "TEXT"),
+            ("second_para_instructions", "TEXT")
         ]
         email_columns_to_add = [
             ("smtp_message_id", "VARCHAR"),
