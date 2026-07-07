@@ -85,12 +85,8 @@ STRICT PARAGRAPH-BY-PARAGRAPH EMAIL STRUCTURE:
      "{second_para_inst}"
    
 4. PARAGRAPH 3 (Call to Action):
-   - You MUST end the body of the email with this exact CTA text:
+   - You MUST end the body of the email with this exact CTA text (the email body must end exactly here, do NOT generate any sign-off, salutation, signature, or footer like "Best regards", names, links, or phone numbers):
      "{cta_text}"
-   
-5. SIGNATURE BLOCK:
-   - Right after the CTA, sign off by outputting this exact signature block verbatim (do NOT alter it, do NOT prepend label prefixes like "Website:" or "Phone:", output it exactly as-is):
-{signature}
 
 STRICT RULES:
 - IMPORTANT: This email MUST be for {org_name or "the recipient's company"} specifically.
