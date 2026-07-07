@@ -99,35 +99,33 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Parse CORS origins robustly (handles JSON list, single/double quotes, or comma-separated string)
-import os
-allowed_origins = []
-# 1. Parse settings.cors_origins (which is now a string)
-raw_settings_origins = settings.cors_origins or ""
-cleaned_settings = raw_settings_origins.strip("[]\"' ")
-for part in cleaned_settings.split(","):
-    clean_part = part.strip("[]\"' ")
-    if clean_part and clean_part not in allowed_origins:
-        allowed_origins.append(clean_part)
+from fastapi.responses import Response
 
-# 2. Parse CORS_ORIGINS from environment variable if present
-env_cors = os.getenv("CORS_ORIGINS")
-if env_cors:
-    cleaned_env = env_cors.strip("[]\"' ")
-    for part in cleaned_env.split(","):
-        clean_part = part.strip("[]\"' ")
-        if clean_part and clean_part not in allowed_origins:
-            allowed_origins.append(clean_part)
-
-logging.info(f"CORS allowed origins configured: {allowed_origins}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.middleware("http")
+async def db_and_cors_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin")
+        response = Response(status_code=200)
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+        
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logging.error(f"Unhandled error in request: {e}", exc_info=True)
+        response = Response(content="Internal Server Error", status_code=500)
+        
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 app.include_router(api_router, prefix="/api")
 
