@@ -30,6 +30,7 @@ export default function GenerationQueuePage() {
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
   const [activeTab, setActiveTab] = useState<"review" | "sent">("review");
+  const [workspace, setWorkspace] = useState<any>(null);
 
   useEffect(() => {
     load();
@@ -55,6 +56,9 @@ export default function GenerationQueuePage() {
       const data = await api.queue.get();
       setQueue(data);
       if (data.length > 0 && !selected) setSelected(data[0]);
+      
+      const ws = await api.workspace.get();
+      setWorkspace(ws);
     } catch {
       toast.error("Failed to load queue");
     }
@@ -333,6 +337,14 @@ export default function GenerationQueuePage() {
                       onChange={(e) => setEditedBody(e.target.value)}
                       onBlur={(e) => handleUpdate(selected.id, "body", e.target.value)}
                     />
+                    {workspace?.email_signoff && (
+                      <div className="p-4 bg-muted/20 border border-dashed rounded-lg text-sm text-foreground/80 whitespace-pre-wrap font-sans mt-3 select-none">
+                        <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-2">
+                          Email Signature (Appended Dynamically on Send)
+                        </div>
+                        {workspace.email_signoff}
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-end gap-3 pt-2 border-t">
                     <Button variant="destructive" size="sm" onClick={() => handleReject(selected.id)} disabled={!!selected.sent_at}>Reject</Button>

@@ -105,6 +105,34 @@ export default function ProductSettingsPage() {
           return copy;
         });
       }, 2000);
+
+      // Prompt to regenerate if custom paragraph instructions are modified
+      if (field === "first_para_instructions" || field === "second_para_instructions") {
+        const generatedLeads = leads.filter(l => l.status === "generated");
+        if (generatedLeads.length > 0) {
+          const confirmRegen = window.confirm(
+            `You have updated your AI copywriting instructions. Would you like to automatically regenerate email drafts for your ${generatedLeads.length} existing leads using these new instructions?`
+          );
+          if (confirmRegen) {
+            setGenerating(true);
+            try {
+              const leadIds = generatedLeads.map(l => l.id);
+              await api.generate.batch({ lead_ids: leadIds, variations: 1 });
+              toast.success(`Started regeneration for ${leadIds.length} leads in the background!`);
+              setLeads(prev => prev.map(l => {
+                if (l.status === "generated") {
+                  return { ...l, status: "researching" };
+                }
+                return l;
+              }));
+            } catch (e: any) {
+              toast.error(e.message || "Failed to trigger regeneration");
+            } finally {
+              setGenerating(false);
+            }
+          }
+        }
+      }
     } catch {
       setSavingFields(prev => ({ ...prev, [field]: "error" }));
       toast.error(`Failed to save ${field.replace('_', ' ')}`);
