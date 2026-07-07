@@ -120,6 +120,22 @@ def diagnose():
             except Exception as e:
                 print(f"  -> Error: {e}")
                 
+    # 4. Clean up invalid lead emails (e.g. containing spaces) to prevent Pydantic validation errors
+    try:
+        cursor.execute("SELECT id, email FROM leads")
+        leads_to_fix = []
+        for lead_id, email in cursor.fetchall():
+            if email and " " in email:
+                cleaned_email = email.replace(" ", ".").strip()
+                leads_to_fix.append((cleaned_email, lead_id))
+                
+        for cleaned_email, lead_id in leads_to_fix:
+            print(f"Fixing invalid lead email in database: '{cleaned_email}'")
+            cursor.execute("UPDATE leads SET email = ? WHERE id = ?", (cleaned_email, lead_id))
+        conn.commit()
+    except Exception as e:
+        print(f"Error checking/repairing invalid lead emails: {e}")
+
     conn.close()
     print("Database diagnostics and schema updates are fully completed!")
 

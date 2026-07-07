@@ -134,8 +134,9 @@ async def import_leads(
             skipped_invalid += 1
             continue
 
+        email = email.strip()
         # Basic format checks
-        if "@" not in email:
+        if "@" not in email or " " in email:
             skipped_invalid += 1
             continue
 
