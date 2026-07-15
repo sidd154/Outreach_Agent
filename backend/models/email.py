@@ -22,6 +22,7 @@ class GeneratedEmail(Base):
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     edited_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cc: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
     rejected: Mapped[bool] = mapped_column(Boolean, default=False)

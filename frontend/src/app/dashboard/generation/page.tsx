@@ -27,8 +27,11 @@ export default function GenerationQueuePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Live edited subject/body (controlled so chatbot updates are reflected)
+  // Live edited subject/body/recipient details
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
+  const [editedTo, setEditedTo] = useState("");
+  const [editedCc, setEditedCc] = useState("");
   const [activeTab, setActiveTab] = useState<"review" | "sent">("review");
   const [workspace, setWorkspace] = useState<any>(null);
 
@@ -40,6 +43,8 @@ export default function GenerationQueuePage() {
     if (selected) {
       setEditedSubject(selected.subject || "");
       setEditedBody(selected.body || "");
+      setEditedTo(selected.lead?.email || "");
+      setEditedCc(selected.cc || "");
       setChatMessages([{
         role: "assistant",
         content: `Hi! I can rewrite this email for you. Just tell me what to change — for example:\n\n• "Make it shorter"\n• "Make it more casual"\n• "Add a question at the end"\n• "Focus more on pricing benefits"`
@@ -105,9 +110,17 @@ export default function GenerationQueuePage() {
   async function handleUpdate(id: string, field: string, val: string) {
     try {
       await api.queue.update(id, { [field]: val });
-      setSelected((prev: any) => ({ ...prev, [field]: val }));
+      setSelected((prev: any) => {
+        if (field === "to_email") {
+          return { ...prev, lead: { ...prev.lead, email: val } };
+        }
+        return { ...prev, [field]: val };
+      });
       setQueue(prevQueue => prevQueue.map(item => {
         if (item.id === id) {
+          if (field === "to_email") {
+            return { ...item, lead: { ...item.lead, email: val } };
+          }
           return { ...item, [field]: val };
         }
         return item;
@@ -300,9 +313,28 @@ export default function GenerationQueuePage() {
               </div>
               <Card>
                 <CardContent className="p-6 space-y-4">
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">To</div>
-                    <div className="font-medium">{selected.lead?.email}</div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">To</div>
+                      <input
+                        className="w-full bg-transparent border-b outline-none focus:border-primary font-medium p-1 transition-colors"
+                        value={editedTo}
+                        onChange={(e) => setEditedTo(e.target.value)}
+                        onBlur={(e) => handleUpdate(selected.id, "to_email", e.target.value)}
+                        disabled={!!selected.sent_at}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Cc</div>
+                      <input
+                        className="w-full bg-transparent border-b outline-none focus:border-primary text-sm p-1 transition-colors"
+                        placeholder="E.g., manager@company.com, team@company.com"
+                        value={editedCc}
+                        onChange={(e) => setEditedCc(e.target.value)}
+                        onBlur={(e) => handleUpdate(selected.id, "cc", e.target.value)}
+                        disabled={!!selected.sent_at}
+                      />
+                    </div>
                     {selected.sent_at && (
                       <div className="flex gap-4 p-3 rounded-lg bg-muted/50 text-xs mt-2 border">
                         <div>

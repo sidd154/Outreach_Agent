@@ -107,6 +107,9 @@ class ResendEmailSender:
             msg['Subject'] = subject
             msg['From'] = f"{smtp_from_name} <{smtp_from_email}>" if smtp_from_name else smtp_from_email
             msg['To'] = to_address
+            cc_address = kwargs.get("cc")
+            if cc_address:
+                msg['Cc'] = cc_address
             msg['Message-ID'] = message_id
 
             # Request MDN read receipt — recipient's email client will send an auto-reply when read
@@ -148,7 +151,10 @@ class ResendEmailSender:
                     if smtp_username and smtp_password:
                         server.login(smtp_username, smtp_password)
                     
-                    server.sendmail(smtp_from_email, to_address, msg.as_string())
+                    recipients = [e.strip() for e in to_address.split(",") if e.strip()]
+                    cc_recipients = [e.strip() for e in cc_address.split(",") if e.strip()] if cc_address else []
+                    all_recipients = recipients + cc_recipients
+                    server.sendmail(smtp_from_email, all_recipients, msg.as_string())
                     server.quit()
 
                 await loop.run_in_executor(None, _send)

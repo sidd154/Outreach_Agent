@@ -7,6 +7,7 @@ from .lead import LeadResponse
 class GeneratedEmailBase(BaseModel):
     subject: str
     body: str
+    cc: Optional[str] = None
 
 class GeneratedEmailCreate(GeneratedEmailBase):
     pass
@@ -15,6 +16,7 @@ class GeneratedEmailUpdate(BaseModel):
     subject: Optional[str] = None
     body: Optional[str] = None
     edited_body: Optional[str] = None
+    cc: Optional[str] = None
 
 class GeneratedEmailResponse(GeneratedEmailBase):
     id: uuid.UUID

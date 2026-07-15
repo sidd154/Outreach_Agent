@@ -96,6 +96,13 @@ async def update_email(
     if "body" in data:
         email.body = data["body"]
         email.edited_body = data["body"]
+    if "cc" in data:
+        email.cc = data["cc"]
+    if "to_email" in data:
+        lr = await db.execute(select(Lead).where(Lead.id == email.lead_id))
+        lead = lr.scalar_one_or_none()
+        if lead:
+            lead.email = data["to_email"]
         
     await db.commit()
     return {"status": "updated"}
@@ -239,7 +246,7 @@ async def send_all(
         if workspace.email_signoff:
             body_content = f"{email.body}\n\n{workspace.email_signoff}"
             
-        res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id)
+        res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id, cc=email.cc)
         if res.success:
             email.sent_at = datetime.now()
             email.resend_email_id = res.email_id
@@ -302,7 +309,7 @@ async def send_single(
         body_content = f"{email.body}\n\n{workspace.email_signoff}"
 
     sender = ResendEmailSender(workspace)
-    res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id)
+    res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id, cc=email.cc)
     
     if res.success:
         email.approved = True
@@ -398,7 +405,7 @@ async def approve_and_send_all(
                 body_content = email.body
                 if bg_ws.email_signoff:
                     body_content = f"{email.body}\n\n{bg_ws.email_signoff}"
-                res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id)
+                res = await sender.send_email(lead.email, email.subject, body_content, email_id=email.id, cc=email.cc)
                 if res.success:
                     email.sent_at = datetime.now()
                     email.resend_email_id = res.email_id

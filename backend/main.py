@@ -73,6 +73,7 @@ async def lifespan(app: FastAPI):
         ]
         email_columns_to_add = [
             ("smtp_message_id", "VARCHAR"),
+            ("cc", "VARCHAR(500)"),
         ]
         for col_name, col_type in columns_to_add:
             try:

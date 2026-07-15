@@ -107,7 +107,8 @@ def diagnose():
     expected_emails = [
         ("smtp_message_id", "VARCHAR"),
         ("opened_at", "DATETIME"),
-        ("is_opened", "BOOLEAN DEFAULT 0")
+        ("is_opened", "BOOLEAN DEFAULT 0"),
+        ("cc", "VARCHAR(500)")
     ]
     
     for col_name, col_type in expected_emails:
