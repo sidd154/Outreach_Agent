@@ -124,6 +124,15 @@ class ResendEmailSender:
             msg.attach(part1)
 
             html_body = _text_to_html(body_text)
+            email_id = kwargs.get("email_id")
+            if email_id:
+                pixel_url = f"{settings.backend_url}/api/track/open/{email_id}"
+                pixel_tag = f'<img src="{pixel_url}" width="1" height="1" style="display:none !important; width:1px; height:1px; border:0;" alt="" />'
+                if "</body>" in html_body:
+                    html_body = html_body.replace("</body>", f"{pixel_tag}</body>")
+                else:
+                    html_body = f"{html_body}{pixel_tag}"
+
             part2 = MIMEText(html_body, 'html')
             msg.attach(part2)
 

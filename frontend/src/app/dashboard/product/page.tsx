@@ -763,87 +763,136 @@ export default function ProductSettingsPage() {
           </Badge>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-xl border border-muted bg-card shadow-inner p-6 space-y-4 font-mono text-sm leading-relaxed text-foreground select-none max-w-3xl mx-auto">
-            {/* Subject */}
-            <div className="flex items-center gap-2 border-b pb-2">
-              <span className="text-muted-foreground font-semibold shrink-0">Subject: </span>
-              <Input
-                id="product_name"
-                className="flex-1 h-7 text-sm font-sans bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary py-0"
-                value={workspace?.product_name || ""}
-                placeholder="Product Name"
-                onChange={(e) => handleFieldChange("product_name", e.target.value)}
-                onBlur={(e) => handleUpdateField("product_name", e.target.value)}
-              />
-              <span className="text-foreground shrink-0 font-sans">- Quick Question</span>
-              {renderSaveIndicator("product_name")}
-            </div>
+          <Tabs defaultValue="first-email" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-xs mx-auto mb-4 bg-muted p-1 rounded-xl">
+              <TabsTrigger value="first-email" className="text-sm py-1.5 rounded-lg">First Email</TabsTrigger>
+              <TabsTrigger value="followup-email" className="text-sm py-1.5 rounded-lg">Follow-up Email</TabsTrigger>
+            </TabsList>
 
-            {/* Body */}
-            <div className="space-y-4 font-sans text-base text-foreground/90">
-              <p>Hi [Recipient Name],</p>
-
-              {/* Paragraph 1 Prompt Textarea */}
-              <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
-                <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
-                  <span>Paragraph 1: Personalized Hook AI Prompt {renderSaveIndicator("first_para_instructions")}</span>
+            <TabsContent value="first-email" className="space-y-4">
+              <div className="rounded-xl border border-muted bg-card shadow-inner p-6 space-y-4 font-mono text-sm leading-relaxed text-foreground select-none max-w-3xl mx-auto">
+                {/* Subject */}
+                <div className="flex items-center gap-2 border-b pb-2">
+                  <span className="text-muted-foreground font-semibold shrink-0">Subject: </span>
+                  <Input
+                    id="product_name"
+                    className="flex-1 h-7 text-sm font-sans bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary py-0"
+                    value={workspace?.product_name || ""}
+                    placeholder="Product Name"
+                    onChange={(e) => handleFieldChange("product_name", e.target.value)}
+                    onBlur={(e) => handleUpdateField("product_name", e.target.value)}
+                  />
+                  <span className="text-foreground shrink-0 font-sans">- Quick Question</span>
+                  {renderSaveIndicator("product_name")}
                 </div>
-                <Textarea
-                  id="first_para_instructions"
-                  className="w-full h-16 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
-                  value={workspace?.first_para_instructions || ""}
-                  placeholder="E.g., Write a short, highly personalized 1-sentence hook referencing their main header or recent accomplishments."
-                  onChange={(e) => handleFieldChange("first_para_instructions", e.target.value)}
-                  onBlur={(e) => handleUpdateField("first_para_instructions", e.target.value)}
-                />
-              </div>
 
-              {/* Paragraph 2 Prompt Textarea */}
-              <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
-                <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
-                  <span>Paragraph 2: Value Pitch / Offer AI Prompt {renderSaveIndicator("second_para_instructions")}</span>
-                </div>
-                <Textarea
-                  id="second_para_instructions"
-                  className="w-full h-20 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
-                  value={workspace?.second_para_instructions || ""}
-                  placeholder="E.g., Pitch our SaaS solution in 1-2 sentences. Highlight how we solve their core industry pain points."
-                  onChange={(e) => handleFieldChange("second_para_instructions", e.target.value)}
-                  onBlur={(e) => handleUpdateField("second_para_instructions", e.target.value)}
-                />
-              </div>
+                {/* Body */}
+                <div className="space-y-4 font-sans text-base text-foreground/90">
+                  <p>Hi [Recipient Name],</p>
 
-              {/* Paragraph 3 Prompt Input (CTA) */}
-              <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
-                <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
-                  <span>Paragraph 3: Call to Action (CTA) {renderSaveIndicator("cta")}</span>
-                </div>
-                <Input
-                  id="cta"
-                  className="w-full h-8 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400"
-                  value={workspace?.cta || ""}
-                  placeholder="E.g., Would you be open to a brief call this week?"
-                  onChange={(e) => handleFieldChange("cta", e.target.value)}
-                  onBlur={(e) => handleUpdateField("cta", e.target.value)}
-                />
-              </div>
+                  {/* Paragraph 1 Prompt Textarea */}
+                  <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
+                      <span>Paragraph 1: Personalized Hook AI Prompt {renderSaveIndicator("first_para_instructions")}</span>
+                    </div>
+                    <Textarea
+                      id="first_para_instructions"
+                      className="w-full h-16 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
+                      value={workspace?.first_para_instructions || ""}
+                      placeholder="E.g., Write a short, highly personalized 1-sentence hook referencing their main header or recent accomplishments."
+                      onChange={(e) => handleFieldChange("first_para_instructions", e.target.value)}
+                      onBlur={(e) => handleUpdateField("first_para_instructions", e.target.value)}
+                    />
+                  </div>
 
-              {/* Complete Signature Block Textarea */}
-              <div className="space-y-1 bg-muted/30 border rounded-lg p-3 pt-2">
-                <div className="flex justify-between items-center text-[11px] font-semibold text-muted-foreground mb-1">
-                  <span>Email Signature Block (Literal Output) {renderSaveIndicator("email_signoff")}</span>
+                  {/* Paragraph 2 Prompt Textarea */}
+                  <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
+                      <span>Paragraph 2: Value Pitch / Offer AI Prompt {renderSaveIndicator("second_para_instructions")}</span>
+                    </div>
+                    <Textarea
+                      id="second_para_instructions"
+                      className="w-full h-20 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
+                      value={workspace?.second_para_instructions || ""}
+                      placeholder="E.g., Pitch our SaaS solution in 1-2 sentences. Highlight how we solve their core industry pain points."
+                      onChange={(e) => handleFieldChange("second_para_instructions", e.target.value)}
+                      onBlur={(e) => handleUpdateField("second_para_instructions", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Paragraph 3 Prompt Input (CTA) */}
+                  <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
+                      <span>Paragraph 3: Call to Action (CTA) {renderSaveIndicator("cta")}</span>
+                    </div>
+                    <Input
+                      id="cta"
+                      className="w-full h-8 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400"
+                      value={workspace?.cta || ""}
+                      placeholder="E.g., Would you be open to a brief call this week?"
+                      onChange={(e) => handleFieldChange("cta", e.target.value)}
+                      onBlur={(e) => handleUpdateField("cta", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Complete Signature Block Textarea */}
+                  <div className="space-y-1 bg-muted/30 border rounded-lg p-3 pt-2">
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-muted-foreground mb-1">
+                      <span>Email Signature Block (Literal Output) {renderSaveIndicator("email_signoff")}</span>
+                    </div>
+                    <Textarea
+                      id="email_signoff"
+                      className="w-full h-24 text-sm font-sans bg-background border-input focus-visible:ring-primary leading-relaxed"
+                      value={workspace?.email_signoff || ""}
+                      placeholder="Best regards,&#10;[Sender Name]&#10;[Company Name]&#10;www.website.com | +1 555-555-5555"
+                      onChange={(e) => handleFieldChange("email_signoff", e.target.value)}
+                      onBlur={(e) => handleUpdateField("email_signoff", e.target.value)}
+                    />
+                  </div>
                 </div>
-                <Textarea
-                  id="email_signoff"
-                  className="w-full h-24 text-sm font-sans bg-background border-input focus-visible:ring-primary leading-relaxed"
-                  value={workspace?.email_signoff || ""}
-                  placeholder="Best regards,&#10;[Sender Name]&#10;[Company Name]&#10;www.website.com | +1 555-555-5555"
-                  onChange={(e) => handleFieldChange("email_signoff", e.target.value)}
-                  onBlur={(e) => handleUpdateField("email_signoff", e.target.value)}
-                />
               </div>
-            </div>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="followup-email" className="space-y-4">
+              <div className="rounded-xl border border-muted bg-card shadow-inner p-6 space-y-4 font-mono text-sm leading-relaxed text-foreground select-none max-w-3xl mx-auto">
+                {/* Subject */}
+                <div className="flex items-center gap-2 border-b pb-2">
+                  <span className="text-muted-foreground font-semibold shrink-0">Subject: </span>
+                  <span className="text-foreground font-sans">
+                    Re: {workspace?.product_name || "[Product Name]"} - Quick Question
+                  </span>
+                </div>
+
+                {/* Body */}
+                <div className="space-y-4 font-sans text-base text-foreground/90">
+                  <p>Hi [Recipient Name],</p>
+
+                  {/* Follow-up Prompt Textarea */}
+                  <div className="space-y-1 bg-purple-50/30 border border-purple-100/50 rounded-lg p-3">
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-purple-600">
+                      <span>Follow-up Email AI Instructions {renderSaveIndicator("followup_instructions")}</span>
+                    </div>
+                    <Textarea
+                      id="followup_instructions"
+                      className="w-full h-24 text-sm font-sans bg-background border-purple-200 focus-visible:ring-purple-400 leading-relaxed"
+                      value={workspace?.followup_instructions || ""}
+                      placeholder="E.g., Keep follow-up emails under 50 words, reference their lack of response politely, offer Tuesday/Thursday options..."
+                      onChange={(e) => handleFieldChange("followup_instructions", e.target.value)}
+                      onBlur={(e) => handleUpdateField("followup_instructions", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Dynamic Signature Block (Shared with first email) */}
+                  <div className="p-3 bg-muted/20 border rounded-lg text-sm text-foreground/80 whitespace-pre-wrap select-none mt-2">
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-2">
+                      Shared Email Signature
+                    </div>
+                    {workspace?.email_signoff || "Best regards,"}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Integrated Generate Button */}
           <div className="pt-4 border-t flex justify-center">
@@ -883,17 +932,6 @@ export default function ProductSettingsPage() {
               placeholder="Describe your service capabilities, target pain points solved, rates/packages, and differentiators..."
               onChange={(e) => handleFieldChange("product_description", e.target.value)}
               onBlur={(e) => handleUpdateField("product_description", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="followup_instructions" className="text-xs">Custom AI Follow-up Instructions {renderSaveIndicator("followup_instructions")}</Label>
-            <Textarea 
-              id="followup_instructions"
-              className="h-24 leading-relaxed"
-              defaultValue={workspace?.followup_instructions || ""}
-              placeholder="E.g., Keep follow-up emails under 50 words, reference their lack of response politely, offer Tuesday/Thursday options..."
-              onBlur={(e) => handleUpdateField("followup_instructions", e.target.value)}
             />
           </div>
         </CardContent>

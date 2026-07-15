@@ -216,6 +216,8 @@ async def poll_mailbox(host: str, port: int, username: str, password: str | None
         return 0
         
     new_count = 0
+    matched_msg_nums = []
+
     for num, raw_email in unread_messages:
         try:
             parsed = parse_imap_message(raw_email)
@@ -262,22 +264,8 @@ async def poll_mailbox(host: str, port: int, username: str, password: str | None
                     await db.commit()
                     logger.info(f"MDN read receipt: marked email {sent_email.id} as opened (from {parsed['from_email']})")
                 
-                # Mark the MDN notification itself as read in IMAP
-                def _mark_mdn_read(msg_num):
-                    try:
-                        if port == 993:
-                            m = imaplib.IMAP4_SSL(host, port)
-                        else:
-                            m = imaplib.IMAP4(host, port)
-                            m.starttls()
-                        m.login(username, password)
-                        m.select("inbox")
-                        m.store(msg_num, "+FLAGS", "\\Seen")
-                        m.close()
-                        m.logout()
-                    except Exception as e:
-                        logger.error(f"Failed to mark MDN message {msg_num} as seen: {e}")
-                await loop.run_in_executor(None, _mark_mdn_read, num)
+                # Queue the MDN message number to mark as read later in batch
+                matched_msg_nums.append(num)
                 continue  # Don't process MDN as a regular reply
             # ---- End MDN Detection ----
                 
@@ -330,26 +318,37 @@ async def poll_mailbox(host: str, port: int, username: str, password: str | None
                 
             await db.commit()
             
-            # Mark as read in IMAP server
-            def _mark_as_read(msg_num):
-                try:
-                    if port == 993:
-                        m = imaplib.IMAP4_SSL(host, port)
-                    else:
-                        m = imaplib.IMAP4(host, port)
-                        m.starttls()
-                    m.login(username, password)
-                    m.select("inbox")
-                    m.store(msg_num, "+FLAGS", "\\Seen")
-                    m.close()
-                    m.logout()
-                except Exception as e:
-                    logger.error(f"Failed to mark IMAP message {msg_num} as seen: {e}")
-                    
-            await loop.run_in_executor(None, _mark_as_read, num)
+            # Queue standard reply message number to mark as read later in batch
+            matched_msg_nums.append(num)
             new_count += 1
         except Exception as e:
             logger.error(f"Failed to process IMAP message: {e}")
+
+    # Mark all queued matched message numbers as read in a single batch connection
+    if matched_msg_nums:
+        def _mark_batch_read(nums):
+            try:
+                if port == 993:
+                    m = imaplib.IMAP4_SSL(host, port)
+                else:
+                    m = imaplib.IMAP4(host, port)
+                    m.starttls()
+                
+                if xoauth2_string:
+                    m.authenticate("XOAUTH2", lambda x: xoauth2_string)
+                else:
+                    m.login(username, password)
+                
+                m.select("inbox")
+                for msg_num in nums:
+                    m.store(msg_num, "+FLAGS", "\\Seen")
+                m.close()
+                m.logout()
+                logger.info(f"Successfully marked {len(nums)} IMAP messages as read in a single batch.")
+            except Exception as ex:
+                logger.error(f"Failed to mark batch IMAP messages {nums} as seen: {ex}")
+                
+        await loop.run_in_executor(None, _mark_batch_read, matched_msg_nums)
             
     return new_count
 
