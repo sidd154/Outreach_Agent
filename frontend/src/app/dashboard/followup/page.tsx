@@ -29,6 +29,28 @@ export default function FollowUpPage() {
 
   // Filtering state
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncReplies = async () => {
+    setSyncing(true);
+    try {
+      let count = 0;
+      try {
+        const gmailRes = await api.workspace.gmailPoll();
+        count += gmailRes.polled_count || 0;
+      } catch {}
+      try {
+        const imapRes = await api.workspace.imapPollNow();
+        count += imapRes.polled_count || 0;
+      } catch {}
+      toast.success(`Sync complete! Loaded ${count} new replies/read receipts.`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to sync inbox");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -178,7 +200,19 @@ export default function FollowUpPage() {
       <div className="w-1/3 border-r flex flex-col h-full bg-card">
         <Tabs defaultValue="no_reply" className="flex-1 flex flex-col overflow-hidden">
           <div className="p-4 border-b flex flex-col gap-3">
-            <h2 className="font-bold text-lg">Follow Up Worklists</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-lg">Follow Up Worklists</h2>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-8 text-xs flex items-center gap-1.5 px-2.5"
+                onClick={handleSyncReplies}
+                disabled={syncing}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Inbox'}
+              </Button>
+            </div>
             <TabsList className="grid w-full grid-cols-2 bg-muted">
               <TabsTrigger value="no_reply" className="text-xs">No Reply ({noReplyLeads.length})</TabsTrigger>
               <TabsTrigger value="replied" className="text-xs">Replied ({repliedLeads.length})</TabsTrigger>

@@ -86,9 +86,9 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
             
-    # start_scheduler()  # DISABLED - re-enable after IMAP auth policy is fixed
+    start_scheduler()
     yield
-    # stop_scheduler()
+    stop_scheduler()
     await engine.dispose()
 
 app = FastAPI(
