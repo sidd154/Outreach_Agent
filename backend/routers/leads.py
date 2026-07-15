@@ -119,6 +119,8 @@ async def import_leads(
     skipped_invalid = 0
     errors = []
 
+    processed_emails = set()
+
     def _find_column(row_dict: dict, aliases: list[str]) -> Optional[str]:
         for key, val in row_dict.items():
             if not key:
@@ -147,6 +149,10 @@ async def import_leads(
             skipped_invalid += 1
             continue
 
+        if email.lower() in processed_emails:
+            skipped_duplicates += 1
+            continue
+
         bl = await db.execute(select(BlacklistEntry).where(
             BlacklistEntry.workspace_id == workspace.id,
             BlacklistEntry.email == email
@@ -162,6 +168,8 @@ async def import_leads(
         if ex.scalar_one_or_none():
             skipped_duplicates += 1
             continue
+            
+        processed_emails.add(email.lower())
             
         try:
             cid = None
