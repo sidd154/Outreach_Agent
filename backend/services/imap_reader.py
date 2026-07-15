@@ -254,8 +254,13 @@ async def poll_mailbox(host: str, port: int, username: str, password: str | None
             if is_mdn and original_message_id:
                 # Find the sent email with this smtp_message_id
                 from backend.models.email import GeneratedEmail
+                clean_id = original_message_id.strip().strip("<>")
                 email_result = await db.execute(
-                    select(GeneratedEmail).where(GeneratedEmail.smtp_message_id == original_message_id.strip())
+                    select(GeneratedEmail).where(
+                        (GeneratedEmail.smtp_message_id == original_message_id.strip()) |
+                        (GeneratedEmail.smtp_message_id == f"<{clean_id}>") |
+                        (GeneratedEmail.smtp_message_id == clean_id)
+                    )
                 )
                 sent_email = email_result.scalar_one_or_none()
                 if sent_email and not sent_email.is_opened:

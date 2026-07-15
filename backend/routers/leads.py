@@ -103,7 +103,14 @@ async def import_leads(
     workspace: Workspace = Depends(get_current_workspace)
 ):
     content = await file.read()
-    text = content.decode("utf-8-sig")  # utf-8-sig handles BOM markers in Excel CSVs
+    try:
+        text = content.decode("utf-8-sig")  # utf-8-sig handles BOM markers in Excel CSVs
+    except UnicodeDecodeError:
+        try:
+            text = content.decode("latin-1")
+        except Exception:
+            raise HTTPException(400, "Could not decode CSV file. Please make sure it is a valid text CSV file encoded in UTF-8 or Latin-1.")
+
     reader = csv.DictReader(io.StringIO(text))
     
     imported = 0

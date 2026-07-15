@@ -46,10 +46,14 @@ export default function LeadsPage() {
     if (!file) return;
     try {
       const res = await api.leads.importCsv(file);
-      toast.success(`Imported ${res.imported} leads. Skipped ${res.skipped_duplicates} duplicates.`);
+      if (res.imported === 0) {
+        toast.warning(`Imported 0 leads. Please check that your CSV columns contain 'email' and 'website' headers.`);
+      } else {
+        toast.success(`Imported ${res.imported} leads. Skipped ${res.skipped_duplicates} duplicates.`);
+      }
       load();
-    } catch {
-      toast.error("Import failed");
+    } catch (err: any) {
+      toast.error(err.message || "Import failed. Please check file format.");
     }
     // reset input so same file can be re-imported
     e.target.value = "";
