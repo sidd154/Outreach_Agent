@@ -46,6 +46,16 @@ of this example email, but do not copy its content:
     cta_text = workspace_data.get("cta") or "Would you be open to a brief call?"
     signature = workspace_data.get("email_signoff") or f"Best regards,\n{workspace_data.get('resend_from_name') or workspace_data.get('name') or 'Sender'}\n{workspace_data.get('name') or ''}\n{workspace_data.get('product_website') or ''}"
 
+    custom_instructions = workspace_data.get('custom_instructions')
+    custom_instructions_block = f"""
+=========================================================
+USER CUSTOM INSTRUCTIONS (HIGHEST PRIORITY OVERRIDE):
+The user has provided the following custom instructions. 
+You MUST strictly follow these instructions. If they conflict with any rules above, these custom instructions take absolute precedence:
+"{custom_instructions}"
+=========================================================
+""" if custom_instructions else ""
+
     return f"""
 You are an expert B2B cold email copywriter.
 
@@ -66,7 +76,6 @@ TONE: {tone}
 LENGTH: {email_length}
 LANGUAGE: {language}
 LOCAL CONTEXT: {workspace_data.get("local_context") or ""}
-{f"CUSTOM INSTRUCTIONS (CRITICAL): {workspace_data.get('custom_instructions')}" if workspace_data.get('custom_instructions') else ""}
 
 VARIATION INSTRUCTION: {variation_instruction}
 
@@ -98,6 +107,7 @@ STRICT RULES:
   * Do NOT use exclamation marks (use periods only).
   * Avoid aggressive sales pitches, false urgency, or shouting (do not use all-caps words).
   * Minimize formatting and do not include multiple links/URLs (at most one booking link).
+{custom_instructions_block}
 - Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
 - EXTREMELY IMPORTANT: DO NOT write any conversational text, preamble, or markdown. Output ONLY the raw JSON object.
 """

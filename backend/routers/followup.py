@@ -134,7 +134,14 @@ async def generate_followups(
                 continue
                 
             # Draft a gentle non-replier follow-up
-            followup_rules = f"\n5. CUSTOM FOLLOW-UP INSTRUCTIONS (CRITICAL): {workspace.followup_instructions}" if workspace.followup_instructions else ""
+            followup_rules = f"""
+=========================================================
+USER CUSTOM FOLLOW-UP INSTRUCTIONS (HIGHEST PRIORITY OVERRIDE):
+The user has provided the following custom instructions. 
+You MUST strictly follow these instructions. If they conflict with any rules above, these custom instructions take absolute precedence:
+"{workspace.followup_instructions}"
+=========================================================
+""" if workspace.followup_instructions else ""
             system_prompt = f"""You are a professional sales copywriter writing a polite, extremely brief follow-up email.
 PRODUCT: {workspace.product_name}
 ONE-LINER: {workspace.product_one_liner or ""}
@@ -152,7 +159,8 @@ STRICT RULES:
 1. Write a short follow-up pitch under 80 words.
 2. Be polite and restate the offer value concisely. Do not copy the original pitch.
 3. Return ONLY a valid JSON object: {{"subject": "Re: ...", "body": "..."}}
-4. No preambles or markdown wrappers. Output ONLY raw JSON.{followup_rules}"""
+4. No preambles or markdown wrappers. Output ONLY raw JSON.
+{followup_rules}"""
 
             user_prompt = f"Draft a follow-up email to {lead.contact_name or 'there'} at {lead.org_name or 'your company'}."
             
